@@ -1,0 +1,39 @@
+# File: makeMetagenePlot.r
+# 8/29/14
+# In a given folder, produces plot files and saves data into an RData
+
+library(data.table)
+
+args = commandArgs(TRUE)
+folderName = args[1]
+regionName = args[2]
+start = strtoi(args[3]) + 1
+nameCol = strtoi(args[4]) + 1
+numBins = strtoi(args[5])
+
+# Extrapolate bins to exactly the number we need
+extrap = function(x) {
+  num = sum(!is.na(x))
+  if (num==numBins) return(x)
+  approx(1:num, x[1:num], n=numBins)$y
+}
+
+# extrap
+no_col = count.fields("allchr.txt", sep = "\t") 
+data = t(read.table("allchr.txt", sep='\t', fill=TRUE,
+ col.names=1:max(no_col))) #can't use fread
+
+colnames(data) = data[nameCol,]
+data = data[start:nrow(data),]
+data.extrap = apply(data, 2, extrap) # coerce to exactly some number of bins
+
+# Scale and collapse data, and print averages to files
+data.avg = apply(data.extrap, 1, function(x) mean(x, na.rm=TRUE))
+write.table(data.avg, paste('avgraw_', folderName, '_', regionName, ".txt", sep=''), sep='\t')
+
+# Make plots of the scaled average data
+pdf("plot.pdf")
+plot(data.avg, type='l', lwd=2, ylab = "Average reads per nt", main="All regions", col="red")
+dev.off()
+
+save(data, data.extrap, data.avg, file="data.RData")

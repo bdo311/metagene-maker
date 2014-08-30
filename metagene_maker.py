@@ -1,0 +1,164 @@
+# metagene_maker.py
+# 8/29/14
+# makes metagenes for bedgraphs and regions according to a configuration file
+
+import os, glob, csv, re, collections, math, multiprocessing, sys
+from binning_functions.py import *
+from merge_bins.py import *
+csv.register_dialect("textdialect", delimiter='\t')
+
+def readConfigFile(fn):
+	# Input: a configuration file with parameters, folders, and regions
+	# Output: these parameters in a hashmap format
+
+	ifile = open(fn, 'r')
+	reader = csv.reader(ifile, 'textdialect')
+
+	# params
+	config = {}
+	for row in reader:
+		if 'folder' in row[0]: break
+		if '#' in row[0] or row[0]=='': continue
+		config[row[0]] = row[1]
+
+	# folders
+	folders = {}
+	for row in reader:
+		if 'regionType' in row[0]: break
+		if len(row) != 2:
+			print ("Incorrect folder row length")
+			exit()
+		folders[row[0]] = row[1:]
+
+	# regions
+	regions = {}
+	for row in reader:
+		if '#' in row[0] or row[0]=='': continue
+		if len(row) != 13: 
+			print "Incorrect region row length"
+			exit()
+		folders[row[0]] = row[1:]
+
+	return config, folders, regions
+
+def processFolders(parentDir, folders, regions):
+	folderToGraph = {}
+	for folder in folders:
+
+		# setting up folders
+		os.chdir(parentDir)
+		if not glob.glob(folder + '/'): os.mkdir(folder)
+		os.chdir(folder)
+		if not glob.glob('bins/'): os.system("mkdir bins")
+		os.chdir('bins')		
+		regionFolders = ' '.join(regions.keys())
+		os.system("mkdir " + regionFolders)
+
+		# splitting up bedgraph if not done already
+		os.chdir("..")
+		if not glob.glob("bedGraphByChr/"):
+			os.system("mkdir bedGraphByChr")
+			os.chdir("cd bedGraphByChr")
+			os.system("awk '{print >> $1\".bedGraph\"}' " + folders[folder][0])
+
+		# making folder to bedgraph relationship
+		binFolder = parentDir + '/' + folder + '/bins/'
+		graphFolder = parentDir + '/' + folder + '/bedGraphByChr/'
+		folderToGraph[folder] = [binFolder, graphFolder, folders[folder][1]] #bin folder --> [graph folder, strand]
+
+	return folderToGraph
+
+def getChrToRegion(fn, chrCol, header):
+	ifile = open(fn, 'r')
+	reader = csv.reader(ifile, 'textdialect')
+	
+	regions = collections.defaultdict(lambda: []) # by chromosome
+	if header: reader.next()
+	for row in reader:
+		regions[row[chrCol]].append(row)
+	ifile.close()
+	return regions
+
+def processRegions(regions):
+	regionToChrMap = {}
+	for region in regions:
+		info = regions[region]
+		loc = info[0]
+		chrCol = int(info[2])
+		isHeader = True if info[1] == 'y' else False
+		regionToChrMap[region] = getChrToRegion(loc, chrCol, isHeader)
+
+	return regionToChrMap
+
+def main():
+	# check
+	if len(sys.argv) < 2: 
+		print "Need configuration file."
+		exit()
+
+	# reading config file
+	config, folders, regions = readConfigFile(sys.argv[1])
+	print "Read configuration file"
+
+	# processing folders and bedgraphs
+	parentDir = config["parentDir"]
+	folderToGraph = processFolders(parentDir, folders, regions)
+	print "Processed folders:", ', '.join(folderToGraph.keys())
+
+	# processing regions
+	regionToChrMap = processRegions(regions)
+	print "Processed regions:", ', '.join(regionToChrMap.keys())
+
+	# chromosome configuration
+	organism = config['organism(mm9 or hg19)']
+	numChr = 23 if organism == 'hg19' else 20
+	allChroms = ['chr' + str(x) for x in range(1,numChr)]
+	allChroms.extend(['chrX', 'chrY', 'chrM'])
+	threads = int(config['threads'])
+	numProcs = threads
+
+	# making bins
+	for folder in folderToGraph:
+		# if my bedgraph is stranded and my regions are stranded, only 
+		# use the regions that correspond to the bedgraph strand
+		[binFolder, graphFolder, folderStrand[] = folderToGraph[folder]
+
+		# process all regions for each sub-bedgraph
+		for i in range(len(allChroms)):
+			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
+			reads = readBedGraph(graphFolder, chroms)
+			for region in regions:
+				info = regions[region]
+				start, end, strandCol, numBins = int(info[4]), int(info[5]), int(info[7]), int(info[10])
+				stranded = True if info[6]=='y' else False
+				limitSize = True if info[9]=='y' else False
+				extendRegion = True if info[11]=='y' else False
+				
+				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion)
+
+	# merging bins for each chromosome, then make metagene
+	folders = folderToGraph.keys()
+	nproc = 8
+	numPerProc = len(folders)/8 + 1
+	procs = []
+	for i in range(nproc):
+		p = multiprocessing.Process(target=folderWorker, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
+		procs.append(p)
+		p.start()
+	for p in procs: p.join()
+	print "Made metagenes"
+
+	# merging all files, and writing average files
+	regionToFolderAvgs = collections.defaultdict(lambda: {})
+	os.chdir(parentDir)
+	os.mkdir("averages")
+	for region in regions:
+		for folder in folderToGraph:
+			binFolder = folderToGraph[folder][0]
+			os.chdir(binFolder + '/' + region + '/')
+			regionToFolderAvgs[region][folder] = processFile("avgraw_")
+		writeFile(region, regionToFolderAvgs[region], parentDir + '/averages/')
+
+if __name__ == '__main__':
+	main()
+
