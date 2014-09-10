@@ -3,7 +3,6 @@
 # merges bins into metagene for each region type for each bedgraph
 
 import os, glob, csv, re, multiprocessing
-csv.register_dialect("textdialect", delimiter='\t')
 
 def mergeChrAndSort(folder):
 	os.chdir(folder)
@@ -12,19 +11,24 @@ def mergeChrAndSort(folder):
 
 def mergeChr(folder):
 	os.chdir(folder)
+	print folder
 	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 
-script = "makeMetagenePlot.r"
 def folderWorker(start, end, folders, folderToGraph, regions):
-	folder = folders[i]
-	binFolder = folderToGraph[folder][0]
-	for region in regions: 
-		os.chdir(binFolder + '/' + region + '/')
-		mergeChr(binFolder + '/' + region + '/')
+	script = os.path.split(os.path.realpath(__file__))[0] + "/makeMetagenePlot.r"
+	
+	for i in range(start, end):
+		folder = folders[i]
+		binFolder = folderToGraph[folder][0]
+		for region in regions: 
+			os.chdir(binFolder + '/' + region + '/')
+			mergeChr(binFolder + '/' + region + '/')
 
-		info = regions[region]
-		numCols, nameCol, numBins = int(row[8]), int(row[3]), int(info[10])
-		os.system(' '.join(["Rscript", script, folder, region, numCols, nameCol, numBins]))
+			info = regions[region]
+			numCols, nameCol, numBins = info[8], info[3], info[10]
+			rcmd = ' '.join(["Rscript", script, folder, region, numCols, nameCol, numBins])
+			print rcmd
+			os.system(rcmd)
 
 # take in an avg_*_* file and extract the bin values
 def processFile(fileName):
