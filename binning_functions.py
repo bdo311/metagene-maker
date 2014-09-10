@@ -5,7 +5,7 @@
 import os, glob, csv, re, collections, math, multiprocessing, sys
 
 # gets the average score within this bin
-def getAverageScore(chrom, currStart, currEnd, binNum, rn):
+def getAverageScore(chrom, currStart, currEnd, binNum, rn, reads):
 	totalLength = currEnd - currStart + 1
 	totalScore = 0
 	readNumber = rn 			# which read to start at
@@ -38,7 +38,7 @@ def getAverageScore(chrom, currStart, currEnd, binNum, rn):
 	return float(totalScore)/totalLength, readNumber
 
 # gets the array of bins for each gene
-def getBins(chrom, start, end, numBins, rn):
+def getBins(chrom, start, end, numBins, rn, reads):
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 	binNum = start/500000
 
@@ -49,14 +49,14 @@ def getBins(chrom, start, end, numBins, rn):
 		currEnd = currStart + spacingPerBin - 1 # end of my window
 		if currEnd > end: currEnd = end # last bin can't go past TES
 		
-		score, readNumber = getAverageScore(chrom, currStart, currEnd, binNum, readNumber) #updates read number also
+		score, readNumber = getAverageScore(chrom, currStart, currEnd, binNum, readNumber, reads) #updates read number also
 		scores.append(score)
 		currStart = currEnd + 1 # new start of my window
 
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion):
+def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
@@ -77,10 +77,10 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
 		strand = region[strandCol]
-		if folderStrand != '0' and stranded and strand != folderStrand: continue 
+		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
 
 		# getting bins and reading from end to start if region is antisense
-		regionBins = getBins(chrom, start, end, numBins, 0)
+		regionBins = getBins(chrom, start, end, numBins, 0, reads)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
 		outputRow = region
@@ -90,11 +90,11 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 
 	ofile.close()
 	
-def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion):
+def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads):
 	print "Working on " + regionType
 	procs = []
 	for chrom in chroms:
-		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion))
+		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads))
 		procs.append(p)
 		p.start()
 	for p in procs:
