@@ -144,6 +144,7 @@ def main():
 				start, end, strandCol, numBins = int(info[4]), int(info[5]), int(info[7]), int(info[10])
 				stranded = True if info[6]=='y' else False
 				limitSize = True if info[9]=='y' else False
+				print region, limitSize
 				extendRegion = True if info[11]=='y' else False
 				
 				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads)
@@ -168,7 +169,8 @@ def main():
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			os.chdir(binFolder + '/' + region + '/')
-			regionToFolderAvgs[region][folder] = processFile("avgraw_")
+			fn = "avgraw_" + folder + "_" + region
+			regionToFolderAvgs[region][folder] = processFile(fn)
 		writeFile(name + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
 if __name__ == '__main__':

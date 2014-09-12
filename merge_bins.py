@@ -26,7 +26,7 @@ def folderWorker(start, end, folders, folderToGraph, regions):
 
 			info = regions[region]
 			numCols, nameCol, numBins = info[8], info[3], info[10]
-			rcmd = ' '.join(["Rscript", script, folder, region, numCols, nameCol, numBins])
+			rcmd = ' '.join(["Rscript", script, folder, region, numCols, nameCol, numBins, "allchr.txt"])
 			print rcmd
 			os.system(rcmd)
 
