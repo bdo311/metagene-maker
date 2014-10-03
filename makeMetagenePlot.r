@@ -30,7 +30,7 @@ data.extrap = apply(data, 2, extrap) # coerce to exactly some number of bins
 data.avg = apply(data.extrap, 1, mean, na.rm=TRUE)
 write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t')
 
-#Make plots of the scaled average data
+# Make plots of the scaled average data
 pdf("plot.pdf")
 plot(data.avg, type='l', lwd=2, ylab = "Average reads per nt", main="All regions", col="red")
 dev.off()
