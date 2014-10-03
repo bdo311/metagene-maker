@@ -169,7 +169,7 @@ def main():
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			os.chdir(binFolder + '/' + region + '/')
-			fn = "avgraw_" + folder + "_" + region
+			fn = "avgraw_" + folder + "_" + region 
 			regionToFolderAvgs[region][folder] = processFile(fn)
 		writeFile(name + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
