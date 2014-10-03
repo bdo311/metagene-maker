@@ -1,7 +1,7 @@
 metagene-maker
 ==============
 
-makes metagene plots for any bedgraph over given regions
+Makes metagene plots for any bedgraph over given regions. Python and R should be installed.
 
 Simple start
 ----------
