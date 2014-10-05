@@ -88,5 +88,3 @@ the directory specified in the configuration file; contains all files generated 
 
 **bins:** in this folder, there are subfolders for each region type, containing profiles for each instance of the region, intermediate RData files, and metagene plots
 
-How it works
-------------
