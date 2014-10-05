@@ -1,15 +1,16 @@
 metagene-maker
 ==============
 
-Makes metagene plots for bedgraphs over given regions. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
+Makes metagene plots for bedgraphs over given regions for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
 
 Simple start
 ----------
 
-1. Clone project to new directory
+1. Clone project to new directory by executing `git clone https://github.com/bdo311/metagene-maker.git`. No need to install anything.
 2. Make config file (see below)
-3. Run: `metagene_maker.py <config file>`, either in `screen` or `nohup`
-4. Output: excel spreadsheets for each region in a new `averages` folder in the user-provided parent directory
+3. Ensure that you have a bedgraph for every sample you want to analyze.
+4. Run: `python metagene_maker.py <config file>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
+5. Output: excel spreadsheets for each region in a new `averages` folder in the user-provided parent directory
 
 Dependencies
 --------
@@ -23,7 +24,7 @@ Known bugs
 
 Still doesn't work too well for stranded bedgraphs (i.e. GRO-seq data). Implementation is in progress.
 
-Configuration file
+Configuration file (see example.conf for an example)
 --------
 
 ### Parameters
@@ -40,7 +41,7 @@ Configuration file
 
 **bedGraphLoc:** absolute path to bedgraph
 
-**stranded:** + if plus only, - if minus only, 0 if no strand information
+**stranded:** + if plus only, - if minus only, 0 if no strand information. IMPORTANT if your regions are also strand specific.
 
 ### Region columns
 **regionType:** name of region
@@ -57,7 +58,7 @@ Configuration file
 
 **stopCol:** 0-indexed column number of stop designations
 
-**stranded:** y if directional (i.e. TSS's), n if not directional (i.e. enhancers)
+**stranded:** y if directional (i.e. TSS's), n if not directional (i.e. enhancers). IMPORTANT because some region profiles (like transcription start sites) have assymetrical shapes.
 
 **strandCol:** 0-indexed column number of strand designations; put 0 if no strand
 
