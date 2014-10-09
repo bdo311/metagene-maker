@@ -19,10 +19,16 @@ Base Python (>2.7) and R (>3.0)
 
 At least 4 GB RAM if your largest bedgraphbedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
 
-Known bugs
+Todo
 --------
 
 Still doesn't work too well for stranded bedgraphs (i.e. GRO-seq data). Implementation is in progress.
+
+Want to make metagenes that concatenate previously made metagenes (i.e. promoter, CDS, TES). Currently implemented as part of R script but not part of package yet.
+
+Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
+
+
 
 Configuration file (see example.conf for an example)
 --------
