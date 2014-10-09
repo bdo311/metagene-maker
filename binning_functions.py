@@ -40,7 +40,7 @@ def getAverageScore(chrom, currStart, currEnd, binNum, rn, reads):
 # gets the array of bins for each gene
 def getBins(chrom, start, end, numBins, rn, reads):
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
-	binNum = start/500000
+	binNum = start/500000    
 
 	scores = []
 	currStart = start
@@ -63,6 +63,8 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 	for region in chrToRegion[chrom]:
 		start = int(region[startCol])
 		end = int(region[endCol])
+		
+		#print "SNF: regionworker start %d end %d limitSize %r region %s" % (start, end, limitSize, region)
 
 		# binning doesn't really make sense here so just ignore
 		if limitSize:

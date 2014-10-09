@@ -3,6 +3,12 @@
 # 8/29/14
 # makes metagenes for bedgraphs and regions according to a configuration file
 
+
+# SNF TODO 
+# - does not handle short (especially 1 nt long) regions - dies inside Rscript.  Use some cutoff value to trim super short things?  These may distort analysis 
+# - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
+# - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
+
 import os, glob, csv, re, collections, math, multiprocessing, sys, random
 from binning_functions import *
 from merge_bins import *
@@ -63,7 +69,8 @@ def processFolders(parentDir, folders, regions):
 		if not glob.glob("*.bedGraph"):
 			os.system("rm -f *.bedGraph")
 			print "Splitting up bedgraph for " + folder
-			cmd = "awk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
+			#SNF mod: awk -> gawk 
+			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
 			print cmd
 			os.system(cmd)
 
@@ -75,14 +82,18 @@ def processFolders(parentDir, folders, regions):
 	return folderToGraph
 
 def getChrToRegion(fn, chrCol, header):
-	ifile = open(fn, 'r')
-	reader = csv.reader(ifile, 'textdialect')
+	#SNF mod to with clause ifile = open(fn, 'r')
+	with open(fn, 'r') as ifile:
+           #reader = csv.reader(ifile, 'textdialect', delimiter=' ')  # SNF not whitespace-safe 
 	
-	regions = collections.defaultdict(lambda: []) # by chromosome
-	if header: reader.next()
-	for row in reader:
-		regions[row[chrCol]].append(row)
-	ifile.close()
+		regions = collections.defaultdict(lambda: []) # by chromosome
+	        #SNF mod if header: reader.next()
+		if header: ifile.next()
+	        #SNF mod for row in reader:
+		for line in ifile:
+			row = line.split() # added by SNF 
+			regions[row[chrCol]].append(row)
+	#SNF mod ifile.close()
 	return regions
 
 def processRegions(regions):
@@ -123,6 +134,7 @@ def main():
 
 	# chromosome configuration
 	organism = config['organism(mm9 or hg19)']
+
 	numChr = 23 if organism == 'hg19' else 20
 	allChroms = ['chr' + str(x) for x in range(1,numChr)]
 	allChroms.extend(['chrX', 'chrY', 'chrM'])
@@ -150,10 +162,18 @@ def main():
 				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads)
 
 	# merging bins for each chromosome, then make metagene
-	folders = folderToGraph.keys()
-	numPerProc = len(folders)/numProcs + 1
+
+	# SNF - this code is not robust for numProcs > len(folders) 
+	folders = folderToGraph.keys() 
+	#numPerProc = len(folders)/numProcs + 1 
+	# SNF mod - original is above, new below
+	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
 	procs = []
-	for i in range(numProcs):
+
+	# SNF mod - total # of jobs to do is below, may be less than numProcs here if numProcs > len(folders) 
+	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
+
+	for i in range(numJobs):  #SNF mod - replaced numProcs with numJobs 
 		p = multiprocessing.Process(target=folderWorker, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
 		procs.append(p)
 		p.start()
