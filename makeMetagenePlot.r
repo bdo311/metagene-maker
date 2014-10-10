@@ -11,6 +11,7 @@ numBins = strtoi(args[5])
 fn = args[6]
 
 # Extrapolate bins to exactly the number we need
+# SNF: this function fails if there is only one bin currently, i.e. the line in test5 
 extrap = function(x) {
   num = sum(!is.na(x))
   if (num==numBins) return(x)

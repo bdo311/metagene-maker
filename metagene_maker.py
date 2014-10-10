@@ -3,11 +3,11 @@
 # 8/29/14
 # makes metagenes for bedgraphs and regions according to a configuration file
 
-
 # SNF TODO 
 # - does not handle short (especially 1 nt long) regions - dies inside Rscript.  Use some cutoff value to trim super short things?  These may distort analysis 
 # - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
 # - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
+
 
 import os, glob, csv, re, collections, math, multiprocessing, sys, random
 from binning_functions import *
