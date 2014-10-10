@@ -28,6 +28,11 @@ Want to make metagenes that concatenate previously made metagenes (i.e. promoter
 
 Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
 
+Does not handle short (especially 1 nt long) regions - dies inside Rscript. Use some cutoff value to trim super short things? These may distort analysis anyway
+
+Report a histogram of region sizes for processed regions in region space (not chr space)
+
+Parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa (SNF working on currently)
 
 
 Configuration file (see example.conf for an example)
