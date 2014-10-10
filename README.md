@@ -28,7 +28,7 @@ Want to make metagenes that concatenate previously made metagenes (i.e. promoter
 
 Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
 
-Does not handle short (especially 1 nt long) regions - dies inside Rscript. Use some cutoff value to trim super short things? These may distort analysis anyway
+Does not handle short (especially 1 nt long) regions - dies inside Rscript. 
 
 Report a histogram of region sizes for processed regions in region space (not chr space)
 
