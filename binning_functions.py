@@ -73,7 +73,8 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 			length = end - start
 			start = start - length
 			end = end + length
-			
+			region[startCol] = start
+			region[endCol] = end
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
 		strand = region[strandCol]

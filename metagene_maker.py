@@ -40,7 +40,7 @@ def readConfigFile(fn):
 
 	return config, folders, regions
 
-def processFolders(parentDir, folders, regions):
+def processFolders(parentDir, folders, regions, numChr):
 	folderToGraph = {}
 	for folder in folders:
 
@@ -60,7 +60,7 @@ def processFolders(parentDir, folders, regions):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		if not glob.glob("*.bedGraph"):
+		if len(glob.glob("*.bedGraph")) != numChr + 2: # 23 --> 25 for human (chr1-22, x, y, m), 20 --> 22 for mouse (chr1-19, x, y, m)
 			os.system("rm -f *.bedGraph")
 			print "Splitting up bedgraph for " + folder
 			cmd = "awk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
@@ -111,16 +111,6 @@ def main():
 	print "Read configuration file"
 	print config, folders, regions
 
-	# processing folders and bedgraphs
-	parentDir = config["parentDir"]
-	folderToGraph = processFolders(parentDir, folders, regions)
-	print "Processed folders:", ', '.join(folderToGraph.keys())
-	print folderToGraph
-	
-	# processing regions
-	regionToChrMap = processRegions(regions)
-	print "Processed regions:", ', '.join(regionToChrMap.keys())
-
 	# chromosome configuration
 	organism = config['organism(mm9 or hg19)']
 	numChr = 23 if organism == 'hg19' else 20
@@ -128,6 +118,16 @@ def main():
 	allChroms.extend(['chrX', 'chrY', 'chrM'])
 	threads = int(config['threads'])
 	numProcs = threads
+	
+	# processing folders and bedgraphs
+	parentDir = config["parentDir"]
+	folderToGraph = processFolders(parentDir, folders, regions, numChr)
+	print "Processed folders:", ', '.join(folderToGraph.keys())
+	print folderToGraph
+	
+	# processing regions
+	regionToChrMap = processRegions(regions)
+	print "Processed regions:", ', '.join(regionToChrMap.keys())
 
 	# making bins
 	for folder in folderToGraph:
