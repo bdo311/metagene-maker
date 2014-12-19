@@ -8,11 +8,17 @@
 # - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
 # - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
 
-import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess, logging
+import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess, logging, argparse
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
 csv.register_dialect("textdialect", delimiter='\t')
+
+# parser
+parser = argparse.ArgumentParser(description="metagene-maker: obtain average profiles of NGS datasets over your favorite regions", epilog="Example: python metagene_maker.py config.txt")
+parser.add_argument('config_file', metavar='config_file', help='required configuration file')
+parser.add_argument('-l', metavar='binLength', type=int, help="Bases per window when processing bedgraph. Default is 2,000,000.", default=2e6)
+args = parser.parse_args()
 
 # log file
 logger=logging.getLogger('')
@@ -129,15 +135,9 @@ def processRegions(regions):
 
 	return regionToChrMap
 
-def main():	
-	
-	# check
-	if len(sys.argv) < 2: 
-		logger.info("Need configuration file.")
-		exit()
-	
+def main():		
 	# reading config file
-	config, folders, regions = readConfigFile(sys.argv[1])
+	config, folders, regions = readConfigFile(args.config_file)
 	logger.info("\nRead configuration file")
 	for c in config: logger.info('%s: %s', c, config[c])
 
@@ -164,9 +164,9 @@ def main():
 
 	# making bins
 	logger.info("\nReading in bedgraphs and making profiles for each region")
-	binLength = int(sys.argv[2]) # how long is the bin where we put bedgraph regions?
-	#binLength = 2000000
-	xstart = datetime.now()
+	binLength = args.l
+	
+	#xstart = datetime.now()
 	for folder in folderToGraph:
 		# if my bedgraph is stranded and my regions are stranded, only 
 		# use the regions that correspond to the bedgraph strand
@@ -178,7 +178,7 @@ def main():
 			reads = readBedGraph(graphFolder, chroms, binLength)
 			if reads == {}: continue
 			
-			tstart = datetime.now()
+			# tstart = datetime.now()
 			for region in regions:
 				info = regions[region]
 				stranded = True if info[2]=='y' else False
@@ -187,13 +187,13 @@ def main():
 				numBins = int(info[4])
 				
 				regionProcess(binFolder, region, regionToChrMap[region], chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength)
-			tend = datetime.now()
-			delta = tend - tstart
-			print delta.total_seconds()
+			# tend = datetime.now()
+			# delta = tend - tstart
+			# print delta.total_seconds()
 			
-	xend = datetime.now()
-	delta = xend - xstart
-	print delta.total_seconds()
+	# xend = datetime.now()
+	# delta = xend - xstart
+	# print delta.total_seconds()
 
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
