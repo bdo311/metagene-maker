@@ -1,7 +1,7 @@
 metagene-maker
 ==============
 
-Makes metagene plots for bedgraphs over given regions for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
+Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
 
 Simple start
 ----------
@@ -9,15 +9,18 @@ Simple start
 1. Clone project to new directory by executing `git clone https://github.com/bdo311/metagene-maker.git`. No need to install anything.
 2. Make config file (see below)
 3. Ensure that you have a bedgraph for every sample you want to analyze.
-4. Run: `python metagene_maker.py <config file>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
-5. Output: excel spreadsheets for each region in a new `averages` folder in the user-provided parent directory
+4. Ensure that you have properly formatted BED6 files for every region for which you want to build average profiles.
+5. Run: `python metagene_maker.py <config file>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
+6. Output: tab delimited files for each region in a new `averages` folder in the user-provided parent directory
 
 Dependencies
 --------
 
 Base Python (>2.7) and R (>3.0)
 
-At least 4 GB RAM if your largest bedgraphbedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
+Rscript should be callable from the command line
+
+At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
 
 Todo
 --------
@@ -27,8 +30,6 @@ Still doesn't work too well for stranded bedgraphs (i.e. GRO-seq data). Implemen
 Want to make metagenes that concatenate previously made metagenes (i.e. promoter, CDS, TES). Currently implemented as part of R script but not part of package yet.
 
 Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
-
-Does not handle short (especially 1 nt long) regions - dies inside Rscript. 
 
 Report a histogram of region sizes for processed regions in region space (not chr space)
 
@@ -61,19 +62,7 @@ Configuration file (see example.conf for an example)
 
 **header:** y if header, n if no header
 
-**chrCol:** 0-indexed column number of chromosome designations
-
-**nameCol:** 0-indexed column number of name designations
-
-**startCol:** 0-indexed column number of start designations
-
-**stopCol:** 0-indexed column number of stop designations
-
 **stranded:** y if directional (i.e. TSS's), n if not directional (i.e. enhancers). IMPORTANT because some region profiles (like transcription start sites) have assymetrical shapes.
-
-**strandCol:** 0-indexed column number of strand designations; put 0 if no strand
-
-**numCols:** number of columns in file
 
 **limitSize:** y if only regions >200bp and <200kb should be considered; n if no limitation
 
