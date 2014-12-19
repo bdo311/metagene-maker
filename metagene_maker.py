@@ -17,7 +17,7 @@ csv.register_dialect("textdialect", delimiter='\t')
 # parser
 parser = argparse.ArgumentParser(description="metagene-maker: obtain average profiles of NGS datasets over your favorite regions", epilog="Example: python metagene_maker.py config.txt")
 parser.add_argument('config_file', metavar='config_file', help='required configuration file')
-parser.add_argument('-l', metavar='binLength', type=int, help="Bases per window when processing bedgraph. Default is 2,000,000.", default=2e6)
+parser.add_argument('-l', metavar='binLength', type=int, help="Bases per window when processing bedgraph. Default is 2,000,000.", default=2000000)
 args = parser.parse_args()
 
 # log file
