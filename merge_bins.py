@@ -20,7 +20,8 @@ def folderWorker(start, end, folders, folderToGraph, regions):
 	script = os.path.split(os.path.realpath(__file__))[0] + "/makeMetagenePlot.r"
 	
 	for i in range(start, end):
-		folder = folders[i]
+		try: folder = folders[i]
+		except: continue
 		binFolder = folderToGraph[folder][0]
 		for region in regions: 
 			os.chdir(binFolder + '/' + region + '/')

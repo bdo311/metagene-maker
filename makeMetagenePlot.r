@@ -17,17 +17,16 @@ extrap = function(x) {
 }
 
 # extrap
-data = t(read.table(fn, sep='\t', fill=TRUE, col.names=1:(numBins+7), colClasses=c(rep("character",6),rep("numeric",numBins+1)))) 
+data = read.table(fn, sep='\t', fill=TRUE, header=FALSE, colClasses=c(rep("character",6),rep("numeric",numBins+1)))
 
-colnames(data) = data[nameCol,]
-data = data[startCol:nrow(data),]
+rownames(data) = make.names(data[,nameCol], unique=TRUE)
+data = data[,startCol:ncol(data)]
 
 if (numBins > 1) {
-	data = apply(data, c(1,2), as.numeric)
-	data.extrap = apply(data, 2, extrap) # coerce to exactly some number of bins
+	data.extrap = t(apply(data, 1, extrap)) # coerce to exactly some number of bins
 
 	# Scale and collapse data, and print averages to files
-	data.avg = apply(data.extrap, 1, mean, na.rm=TRUE)
+	data.avg = apply(data.extrap, 2, mean, na.rm=TRUE)
 	write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t', quote=FALSE)
 
 	# Make plots of the scaled average data
@@ -35,7 +34,6 @@ if (numBins > 1) {
 	plot(data.avg, type='l', lwd=2, ylab = "Average reads per nt", main="All regions", col="red")
 	dev.off()
 } else {
-	data=as.numeric(data)
 	data.avg = mean(data)
 	write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t', quote=FALSE)
 }
