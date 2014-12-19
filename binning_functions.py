@@ -2,8 +2,10 @@
 # 8/29/14
 # helper functions to make bins for each region
 
-import os, glob, csv, re, collections, math, multiprocessing, sys, time
+import os, glob, csv, re, collections, math, multiprocessing, sys, time, logging
 from datetime import datetime
+
+logger = logging.getLogger('')
 
 # gets the average score within this bin
 def getAverageScore(readList, currStart, currEnd, binNum, rn):
@@ -125,7 +127,7 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, stranded, folderStra
 	ofile.close()
 	
 def regionProcess(binFolder, regionType, chrToRegion, chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength):
-	print "Working on " + regionType
+	logger.info("Working on %s", regionType)
 	procs = []
 	for chrom in chroms:
 		if chrom not in reads: continue
@@ -222,7 +224,7 @@ def getReads(conn, chrom, graph, binLength):
 	ifile.close()
 	conn.send(readsForChrom)
 	conn.close()
-	print chrom, 'done'
+	logger.info('%s done', chrom)
 	
 def readBedGraph(ifolder, chroms, binLength):
 	reads = {} 	# get all chromosomes in the reads dict
@@ -231,7 +233,7 @@ def readBedGraph(ifolder, chroms, binLength):
 	
 	for chrom in chroms:
 		if not glob.glob(ifolder + chrom + '.bedGraph'): continue
-		print chrom, ifolder + chrom + '.bedGraph'
+		logger.info('%s %s', chrom, ifolder + chrom + '.bedGraph')
 		
 		# putting the pipe connections into a list. 
 		parent_conn, child_conn = multiprocessing.Pipe()

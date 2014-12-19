@@ -2,7 +2,9 @@
 # 8/29/14
 # merges bins into metagene for each region type for each bedgraph
 
-import os, glob, csv, re, multiprocessing
+import os, glob, csv, re, multiprocessing, logging
+
+logger = logging.getLogger('')
 
 def mergeChrAndSort(folder):
 	os.chdir(folder)
@@ -11,7 +13,7 @@ def mergeChrAndSort(folder):
 
 def mergeChr(folder):
 	os.chdir(folder)
-	print folder
+	#logger.info(folder)
 	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 
 def folderWorker(start, end, folders, folderToGraph, regions):
@@ -25,15 +27,15 @@ def folderWorker(start, end, folders, folderToGraph, regions):
 			mergeChr(binFolder + '/' + region + '/')
 
 			info = regions[region]
-			numCols, nameCol, numBins = info[8], info[3], info[10]
-			rcmd = ' '.join(["Rscript", script, folder, region, numCols, nameCol, numBins, "allchr.txt"])
-			print rcmd
+			numBins = info[4]
+			rcmd = ' '.join(["Rscript", script, folder, region, "6", "3", numBins, "allchr.txt"])
+			logger.info('%s', rcmd)
 			os.system(rcmd)
 
 # take in an avg_*_* file and extract the bin values
 def processFile(fileName):
 	avgFile = glob.glob(fileName + "*.txt")[0]
-	print avgFile
+	logger.info(avgFile)
 	ifile = open(avgFile, 'r')
 	reader = csv.reader(ifile, 'textdialect')
 

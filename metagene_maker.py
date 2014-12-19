@@ -8,12 +8,24 @@
 # - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
 # - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
 
-
-import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess
+import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess, logging
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
 csv.register_dialect("textdialect", delimiter='\t')
+
+# log file
+logger=logging.getLogger('')
+logger.setLevel(logging.INFO)
+fh=logging.FileHandler('metagene.log')
+fh.setLevel(logging.INFO)
+formatter = logging.Formatter('%(message)s')
+fh.setFormatter(formatter)
+ch=logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+logger.addHandler(fh)
 
 def readConfigFile(fn):
 	# Input: a configuration file with parameters, folders, and regions
@@ -70,10 +82,10 @@ def processFolders(parentDir, folders, regions, numChr):
 		os.chdir("bedGraphByChr")
 		if len(glob.glob("*.bedGraph")) != numChr + 2: # 23 --> 25 for human (chr1-22, x, y, m), 20 --> 22 for mouse (chr1-19, x, y, m)
 			os.system("rm -f *.bedGraph")
-			print "Splitting up bedgraph for " + folder
+			logger.info("\nSplitting up bedgraph for %s", folder)
 			#SNF mod: awk -> gawk 
 			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
-			print cmd
+			logger.info(cmd)
 			os.system(cmd)
 
 		# making folder to bedgraph relationship
@@ -100,9 +112,9 @@ def getChrToRegion(fn, header):
 		counter = 0
 		for line in ifile:
 			counter += 1
-			row = line.split() # added by SNF 
+			row = line.split()
 			if not isBed(row):
-				print "Line %d of file %s is not in BED format" %(counter, fn)
+				logger.info("Line %d of file %s is not in BED format", counter, fn)
 				exit()
 			regions[row[0]].append(row)
 	return regions
@@ -117,20 +129,17 @@ def processRegions(regions):
 
 	return regionToChrMap
 
-def main():
+def main():	
+	
 	# check
 	if len(sys.argv) < 2: 
-		print "Need configuration file."
+		logger.info("Need configuration file.")
 		exit()
-
-	# log file
-	# logfile = open('logs/' + str(random.randrange(1,1000)) + '.log', 'w')
-	# logwriter = csv.writer(logfile, 'textdialect')
 	
 	# reading config file
 	config, folders, regions = readConfigFile(sys.argv[1])
-	print "\nRead configuration file"
-	for c in config: print c + ':', config[c]
+	logger.info("\nRead configuration file")
+	for c in config: logger.info('%s: %s', c, config[c])
 
 	# chromosome configuration
 	organism = config['organism(mm9 or hg19)']
@@ -143,18 +152,18 @@ def main():
 	# processing folders and bedgraphs
 	parentDir = config["parentDir"]
 	folderToGraph = processFolders(parentDir, folders, regions, numChr)
-	print "\nProcessed folders: ", ', '.join(folderToGraph.keys())
+	logger.info("\nProcessed folders: %s", ', '.join(folderToGraph.keys()))
 	for f in folderToGraph:
-		print f + ':', folderToGraph[f][0]
+		logger.info('%s: %s', f, folderToGraph[f][0])
 	
 	# processing regions, checking that they are valid bed files
 	regionToChrMap = processRegions(regions)
-	print "\nProcessed regions: ", ', '.join(regionToChrMap.keys())
+	logger.info("\nProcessed regions: %s", ', '.join(regionToChrMap.keys()))
 	for r in regionToChrMap:
-		print r, regions[r][0]
+		logger.info('%s: %s', r, regions[r][0])
 
 	# making bins
-	print "\nReading in bedgraphs and making profiles for each region"
+	logger.info("\nReading in bedgraphs and making profiles for each region")
 	binLength = int(sys.argv[2]) # how long is the bin where we put bedgraph regions?
 	#binLength = 2000000
 	xstart = datetime.now()
@@ -187,6 +196,7 @@ def main():
 	print delta.total_seconds()
 
 	# merging bins for each chromosome, then make metagene
+	logger.info("\nMaking metagenes")
 	folders = folderToGraph.keys() 
 	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
 	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
@@ -197,13 +207,12 @@ def main():
 		procs.append(p)
 		p.start()
 	for p in procs: p.join()
-	print "Made metagenes"
 
 	# merging all files, and writing average files
 	name = config["name"]
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
-	os.system("mkdir averages")
+	if not glob.glob("averages"): os.system("mkdir averages")
 	for region in regions:
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
@@ -212,6 +221,8 @@ def main():
 			regionToFolderAvgs[region][folder] = processFile(fn)
 		writeFile(name + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
+	logger.info("\nDone!\n")
+	
 if __name__ == '__main__':
 	main()
 
