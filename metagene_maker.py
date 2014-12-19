@@ -68,7 +68,6 @@ def readConfigFile(fn):
 def processFolders(parentDir, folders, regions, numChr):
 	folderToGraph = {}
 	for folder in folders:
-
 		# setting up folders
 		os.chdir(parentDir)
 		if not glob.glob(folder + '/'): os.mkdir(folder)
@@ -77,9 +76,8 @@ def processFolders(parentDir, folders, regions, numChr):
 		if not glob.glob('bins/'): os.system("mkdir bins")
 		os.chdir('bins')
 		#os.system("rmdir *") # removing empty directories
-		regionFolders = ' '.join(regions.keys())
-		try: subprocess.check_output("mkdir " + regionFolders, stderr = a, shell=True)
-		except: pass
+		for r in regions:
+			if not glob.glob(r): os.system("mkdir " + r)
 
 		# splitting up bedgraph if not done already
 		os.chdir("..")
