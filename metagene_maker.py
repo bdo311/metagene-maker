@@ -10,6 +10,7 @@
 
 
 import os, glob, csv, re, collections, math, multiprocessing, sys, random
+from datetime import datetime
 from binning_functions import *
 from merge_bins import *
 csv.register_dialect("textdialect", delimiter='\t')
@@ -133,14 +134,16 @@ def main():
 	# processing folders and bedgraphs
 	parentDir = config["parentDir"]
 	folderToGraph = processFolders(parentDir, folders, regions, numChr)
-	print "Processed folders:", ', '.join(folderToGraph.keys())
+	print "Processed folders: ", ', '.join(folderToGraph.keys())
 	print folderToGraph
 	
 	# processing regions
 	regionToChrMap = processRegions(regions)
-	print "Processed regions:", ', '.join(regionToChrMap.keys())
+	print "Processed regions: ", ', '.join(regionToChrMap.keys())
 
 	# making bins
+	binLength = int(sys.argv[2]) # how long is the bin where we put bedgraph regions?
+	xstart = datetime.now()
 	for folder in folderToGraph:
 		# if my bedgraph is stranded and my regions are stranded, only 
 		# use the regions that correspond to the bedgraph strand
@@ -149,30 +152,34 @@ def main():
 		# process all regions for each sub-bedgraph
 		for i in range(len(allChroms)):
 			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
-			reads = readBedGraph(graphFolder, chroms)
+			
+			reads = readBedGraph(graphFolder, chroms, binLength)
+			if reads == {}: continue
+			
+			tstart = datetime.now()
 			for region in regions:
 				info = regions[region]
 				start, end, strandCol, numBins = int(info[4]), int(info[5]), int(info[7]), int(info[10])
 				stranded = True if info[6]=='y' else False
 				limitSize = True if info[9]=='y' else False
-				print region, limitSize
 				extendRegion = True if info[11]=='y' else False
 				
-				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads)
+				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength)
+			tend = datetime.now()
+			delta = tend - tstart
+			print delta.total_seconds()
+			
+	xend = datetime.now()
+	delta = xend - xstart
+	print delta.total_seconds()
 
 	# merging bins for each chromosome, then make metagene
-
-	# SNF - this code is not robust for numProcs > len(folders) 
 	folders = folderToGraph.keys() 
-	#numPerProc = len(folders)/numProcs + 1 
-	# SNF mod - original is above, new below
 	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
+	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
 	procs = []
 
-	# SNF mod - total # of jobs to do is below, may be less than numProcs here if numProcs > len(folders) 
-	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
-
-	for i in range(numJobs):  #SNF mod - replaced numProcs with numJobs 
+	for i in range(numJobs): 
 		p = multiprocessing.Process(target=folderWorker, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
 		procs.append(p)
 		p.start()

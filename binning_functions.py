@@ -2,17 +2,17 @@
 # 8/29/14
 # helper functions to make bins for each region
 
-import os, glob, csv, re, collections, math, multiprocessing, sys
+import os, glob, csv, re, collections, math, multiprocessing, sys, time
+from datetime import datetime
 
 # gets the average score within this bin
-def getAverageScore(chrom, currStart, currEnd, binNum, rn, reads):
+def getAverageScore(readList, currStart, currEnd, binNum, rn):
 	totalLength = currEnd - currStart + 1
 	totalScore = 0
 	readNumber = rn 			# which read to start at
 
-	if binNum not in reads[chrom]: return 0, readNumber
-	readList = reads[chrom][binNum][rn:]
-	for read in readList:
+	while True:
+		read = readList[readNumber]
 		readStart, readEnd, score = read[0], read[1], read[2]
 		#print 'read', readStart, readEnd, score
 
@@ -38,25 +38,55 @@ def getAverageScore(chrom, currStart, currEnd, binNum, rn, reads):
 	return float(totalScore)/totalLength, readNumber
 
 # gets the array of bins for each gene
-def getBins(chrom, start, end, numBins, rn, reads):
-	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
-	binNum = start/500000    
+def getBins(chrom, start, end, numBins, rn, reads, binLength):
 
-	scores = []
 	currStart = start
+	binNum = start/binLength    
+
+	# better way to find the initial readnumber; saves a few seconds
 	readNumber = 0 #index of read, updated each time
+	readList = reads[chrom][binNum]
+	left = 0
+	right = len(readList) - 1	
+	curr = 0
+	while True:
+		curr = (left + right)/2
+		#print curr, currStart, readList[curr]
+		#time.sleep(0.3)
+		if curr == left or curr == right: break
+		if currStart < readList[curr][0]: right = curr
+		else: left = curr					
+	
+	# walking through each bin for the region
+	# tstart = datetime.now()
+	# for i in range(100):
+	scores = []
+	readNumber = curr-1		
+	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
+
 	while currStart < end:
 		currEnd = currStart + spacingPerBin - 1 # end of my window
 		if currEnd > end: currEnd = end # last bin can't go past TES
 		
-		score, readNumber = getAverageScore(chrom, currStart, currEnd, binNum, readNumber, reads) #updates read number also
+		# xstart = datetime.now()
+		# for i in range(100):
+		score, readNumber = getAverageScore(readList, currStart, currEnd, binNum, readNumber) #updates read number also
+		# xend = datetime.now()
+		# delta = xend - xstart
+		# print delta.total_seconds()
+		
+		#print readNumber, currStart, currEnd, readList[readNumber]
+		#time.sleep(0.3)
 		scores.append(score)
 		currStart = currEnd + 1 # new start of my window
+	# tend = datetime.now()
+	# delta = tend - tstart
+	# print delta.total_seconds()
 
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads):
+def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
@@ -77,13 +107,14 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 			end = end + length
 			region[startCol] = start
 			region[endCol] = end
+			
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
 		strand = region[strandCol]
 		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
 
 		# getting bins and reading from end to start if region is antisense
-		regionBins = getBins(chrom, start, end, numBins, 0, reads)
+		regionBins = getBins(chrom, start, end, numBins, 0, reads, binLength)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
 		outputRow = region
@@ -93,11 +124,12 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 
 	ofile.close()
 	
-def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads):
+def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength):
 	print "Working on " + regionType
 	procs = []
 	for chrom in chroms:
-		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads))
+		if chrom not in reads: continue
+		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength))
 		procs.append(p)
 		p.start()
 	for p in procs:
@@ -116,7 +148,7 @@ def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, 
 
 		
 # Loading reads for each bedgraph, for each chromosome
-def getReads(readQueue, chrom, graph):
+def getReads(readQueue, chrom, graph, binLength):
 	ifile = open(graph, 'r')
 	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = {}
@@ -127,8 +159,8 @@ def getReads(readQueue, chrom, graph):
 		score = float(row[3])
 
 		# which bins does each interval go into?
-		multipleOf500k = start/500000
-		bin1 = multipleOf500k
+		binNum = start/binLength
+		bin1 = binNum
 		bin2 = bin1 - 1
 		
 		# result: bins are overlapping
@@ -141,22 +173,24 @@ def getReads(readQueue, chrom, graph):
 	readQueue.put((chrom, readsForChrom))
 	print chrom, 'done'
 
-def readBedGraph(ifolder, chroms):
+def readBedGraph(ifolder, chroms, binLength):
 	manager = multiprocessing.Manager()
 	readQueue = manager.Queue()
 
 	# get all chromosomes in a queue
 	procs = []
 	for chrom in chroms:
+		if not glob.glob(ifolder + chrom + '.bedGraph'): continue
 		print chrom, ifolder + chrom + '.bedGraph'
-		p = multiprocessing.Process(target=getReads, args=(readQueue, chrom, ifolder + chrom + '.bedGraph'))
+		p = multiprocessing.Process(target=getReads, args=(readQueue, chrom, ifolder + chrom + '.bedGraph', binLength))
 		p.start()
 		procs.append(p)
 	for proc in procs: proc.join()
 
 	# make a large dictionary
-	print "Making dictionary"
 	reads = {}
+	if readQueue.qsize() == 0: return reads # no chromosomes
+	print "Making dictionary"
 	while not readQueue.empty():
 		readTuple = readQueue.get()
 		reads[readTuple[0]] = readTuple[1]
