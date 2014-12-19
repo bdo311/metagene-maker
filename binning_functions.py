@@ -86,13 +86,13 @@ def getBins(chrom, start, end, numBins, rn, reads, binLength):
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength):
+def regionWorker(binFolder, regionType, chrom, chrToRegion, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
 	for region in chrToRegion[chrom]:
-		start = int(region[startCol])
-		end = int(region[endCol])
+		start = int(region[1])
+		end = int(region[2])
 		
 		#print "SNF: regionworker start %d end %d limitSize %r region %s" % (start, end, limitSize, region)
 
@@ -105,12 +105,12 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 			length = end - start
 			start = start - length
 			end = end + length
-			region[startCol] = start
-			region[endCol] = end
+			region[1] = start
+			region[2] = end
 			
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
-		strand = region[strandCol]
+		strand = region[5]
 		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
 
 		# getting bins and reading from end to start if region is antisense
@@ -124,12 +124,12 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, startCol, endCol, st
 
 	ofile.close()
 	
-def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength):
+def regionProcess(binFolder, regionType, chrToRegion, chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength):
 	print "Working on " + regionType
 	procs = []
 	for chrom in chroms:
 		if chrom not in reads: continue
-		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, startCol, endCol, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength))
+		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength))
 		procs.append(p)
 		p.start()
 	for p in procs:
@@ -147,8 +147,58 @@ def regionProcess(binFolder, regionType, chrToRegion, chroms, startCol, endCol, 
 
 
 		
-# Loading reads for each bedgraph, for each chromosome
-def getReads(readQueue, chrom, graph, binLength):
+# # Loading reads for each bedgraph, for each chromosome
+# def getReads(readQueue, chrom, graph, binLength):
+	# ifile = open(graph, 'r')
+	# reader = csv.reader(ifile, 'textdialect')
+	# readsForChrom = {}
+
+	# for row in reader:
+		# start = int(row[1])
+		# end = int(row[2])
+		# score = float(row[3])
+
+		# # which bins does each interval go into?
+		# binNum = start/binLength
+		# bin1 = binNum
+		# bin2 = bin1 - 1
+		
+		# # result: bins are overlapping
+		# if bin1 not in readsForChrom.keys(): readsForChrom[bin1] = []
+		# readsForChrom[bin1].append([start, end, score])
+		# if bin2 not in readsForChrom.keys(): readsForChrom[bin2] = []
+		# readsForChrom[bin2].append([start, end, score])
+
+	# ifile.close()
+	# readQueue.put((chrom, readsForChrom))
+	# print chrom, 'done'
+
+# #this version of reading into queue then dumping queue into bedgraph works, but it's not pretty
+# def readBedGraph(ifolder, chroms, binLength):
+	# manager = multiprocessing.Manager()
+	# readQueue = manager.Queue()
+
+	# # get all chromosomes in a queue
+	# procs = []
+	# for chrom in chroms:
+		# if not glob.glob(ifolder + chrom + '.bedGraph'): continue
+		# print chrom, ifolder + chrom + '.bedGraph'
+		# p = multiprocessing.Process(target=getReads, args=(readQueue, chrom, ifolder + chrom + '.bedGraph', binLength))
+		# p.start()
+		# procs.append(p)
+	# for proc in procs: proc.join()
+
+	# # make a large dictionary
+	# reads = {}
+	# if readQueue.qsize() == 0: return reads # no chromosomes
+	# print "Making dictionary"
+	# while not readQueue.empty():
+		# readTuple = readQueue.get()
+		# reads[readTuple[0]] = readTuple[1]
+	# return reads
+
+#Loading reads for each bedgraph, for each chromosome
+def getReads(conn, chrom, graph, binLength):
 	ifile = open(graph, 'r')
 	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = {}
@@ -170,28 +220,31 @@ def getReads(readQueue, chrom, graph, binLength):
 		readsForChrom[bin2].append([start, end, score])
 
 	ifile.close()
-	readQueue.put((chrom, readsForChrom))
+	conn.send(readsForChrom)
+	conn.close()
 	print chrom, 'done'
-
+	
 def readBedGraph(ifolder, chroms, binLength):
-	manager = multiprocessing.Manager()
-	readQueue = manager.Queue()
-
-	# get all chromosomes in a queue
+	reads = {} 	# get all chromosomes in the reads dict
 	procs = []
+	chromToConn = {}
+	
 	for chrom in chroms:
 		if not glob.glob(ifolder + chrom + '.bedGraph'): continue
 		print chrom, ifolder + chrom + '.bedGraph'
-		p = multiprocessing.Process(target=getReads, args=(readQueue, chrom, ifolder + chrom + '.bedGraph', binLength))
+		
+		# putting the pipe connections into a list. 
+		parent_conn, child_conn = multiprocessing.Pipe()
+		chromToConn[chrom] = parent_conn
+
+		p = multiprocessing.Process(target=getReads, args=(child_conn, chrom, ifolder + chrom + '.bedGraph', binLength))
 		p.start()
 		procs.append(p)
+		
+	# receiving pipe outputs into a dictionary
+	for chrom in chromToConn: 
+		reads[chrom] = chromToConn[chrom].recv()
+		chromToConn[chrom].close()
 	for proc in procs: proc.join()
 
-	# make a large dictionary
-	reads = {}
-	if readQueue.qsize() == 0: return reads # no chromosomes
-	print "Making dictionary"
-	while not readQueue.empty():
-		readTuple = readQueue.get()
-		reads[readTuple[0]] = readTuple[1]
 	return reads

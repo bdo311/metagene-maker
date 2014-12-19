@@ -9,7 +9,7 @@
 # - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
 
 
-import os, glob, csv, re, collections, math, multiprocessing, sys, random
+import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
@@ -60,7 +60,8 @@ def processFolders(parentDir, folders, regions, numChr):
 		os.chdir('bins')
 		#os.system("rmdir *") # removing empty directories
 		regionFolders = ' '.join(regions.keys())
-		os.system("mkdir " + regionFolders)
+		try: subprocess.check_output("mkdir " + regionFolders, stderr = a, shell=True)
+		except: pass
 
 		# splitting up bedgraph if not done already
 		os.chdir("..")
@@ -82,19 +83,28 @@ def processFolders(parentDir, folders, regions, numChr):
 
 	return folderToGraph
 
-def getChrToRegion(fn, chrCol, header):
-	#SNF mod to with clause ifile = open(fn, 'r')
-	with open(fn, 'r') as ifile:
-           #reader = csv.reader(ifile, 'textdialect', delimiter=' ')  # SNF not whitespace-safe 
+# checks whether file is a bed file
+def isBed(row):
+	if 'chr' not in row[0]: return False
+	try:
+		a=int(row[1])
+		b=int(row[2])
+	except: return False
+	return True
 	
+def getChrToRegion(fn, header):
+	with open(fn, 'r') as ifile:	
 		regions = collections.defaultdict(lambda: []) # by chromosome
-	        #SNF mod if header: reader.next()
 		if header: ifile.next()
-	        #SNF mod for row in reader:
+		
+		counter = 0
 		for line in ifile:
+			counter += 1
 			row = line.split() # added by SNF 
-			regions[row[chrCol]].append(row)
-	#SNF mod ifile.close()
+			if not isBed(row):
+				print "Line %d of file %s is not in BED format" %(counter, fn)
+				exit()
+			regions[row[0]].append(row)
 	return regions
 
 def processRegions(regions):
@@ -102,9 +112,8 @@ def processRegions(regions):
 	for region in regions:
 		info = regions[region]
 		loc = info[0]
-		chrCol = int(info[2])
 		isHeader = True if info[1] == 'y' else False
-		regionToChrMap[region] = getChrToRegion(loc, chrCol, isHeader)
+		regionToChrMap[region] = getChrToRegion(loc, isHeader)
 
 	return regionToChrMap
 
@@ -120,8 +129,8 @@ def main():
 	
 	# reading config file
 	config, folders, regions = readConfigFile(sys.argv[1])
-	print "Read configuration file"
-	print config, folders, regions
+	print "\nRead configuration file"
+	for c in config: print c + ':', config[c]
 
 	# chromosome configuration
 	organism = config['organism(mm9 or hg19)']
@@ -134,15 +143,20 @@ def main():
 	# processing folders and bedgraphs
 	parentDir = config["parentDir"]
 	folderToGraph = processFolders(parentDir, folders, regions, numChr)
-	print "Processed folders: ", ', '.join(folderToGraph.keys())
-	print folderToGraph
+	print "\nProcessed folders: ", ', '.join(folderToGraph.keys())
+	for f in folderToGraph:
+		print f + ':', folderToGraph[f][0]
 	
-	# processing regions
+	# processing regions, checking that they are valid bed files
 	regionToChrMap = processRegions(regions)
-	print "Processed regions: ", ', '.join(regionToChrMap.keys())
+	print "\nProcessed regions: ", ', '.join(regionToChrMap.keys())
+	for r in regionToChrMap:
+		print r, regions[r][0]
 
 	# making bins
+	print "\nReading in bedgraphs and making profiles for each region"
 	binLength = int(sys.argv[2]) # how long is the bin where we put bedgraph regions?
+	#binLength = 2000000
 	xstart = datetime.now()
 	for folder in folderToGraph:
 		# if my bedgraph is stranded and my regions are stranded, only 
@@ -151,20 +165,19 @@ def main():
 
 		# process all regions for each sub-bedgraph
 		for i in range(len(allChroms)):
-			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
-			
+			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]			
 			reads = readBedGraph(graphFolder, chroms, binLength)
 			if reads == {}: continue
 			
 			tstart = datetime.now()
 			for region in regions:
 				info = regions[region]
-				start, end, strandCol, numBins = int(info[4]), int(info[5]), int(info[7]), int(info[10])
-				stranded = True if info[6]=='y' else False
-				limitSize = True if info[9]=='y' else False
-				extendRegion = True if info[11]=='y' else False
+				stranded = True if info[2]=='y' else False
+				limitSize = True if info[3]=='y' else False
+				extendRegion = True if info[5]=='y' else False
+				numBins = int(info[4])
 				
-				regionProcess(binFolder, region, regionToChrMap[region], chroms, start, end, stranded, folderStrand, strandCol, limitSize, numBins, extendRegion, reads, binLength)
+				regionProcess(binFolder, region, regionToChrMap[region], chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength)
 			tend = datetime.now()
 			delta = tend - tstart
 			print delta.total_seconds()
