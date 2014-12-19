@@ -8,20 +8,20 @@ from datetime import datetime
 logger = logging.getLogger('')
 
 # gets the average score within this bin
-def getAverageScore(reads, chrom, currStart, currEnd, binNum, rn):
+def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 	totalLength = currEnd - currStart + 1
 	totalScore = 0
 	readNumber = rn 			# which read to start at
 
 	while True:		
 		try: 
-			readList = reads[chrom][binNum]
+			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 		except: #reached end of bin
 			binNum += 1
 			readNumber = 0
-			if binNum not in reads[chrom]: break  #reached end of chromosome
-			readList = reads[chrom][binNum]
+			if binNum not in readsForChrom: break  #reached end of chromosome
+			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 			
 		readStart, readEnd, score = read[0], read[1], read[2]
@@ -49,14 +49,14 @@ def getAverageScore(reads, chrom, currStart, currEnd, binNum, rn):
 	return float(totalScore)/totalLength, readNumber, binNum
 
 # gets the array of bins for each gene
-def getBins(chrom, start, end, numBins, rn, reads, binLength):
+def getBins(start, end, numBins, rn, readsForChrom, binLength):
 
 	currStart = start
 	binNum = start/binLength    
 
 	# better way to find the initial readnumber; saves a few seconds
 	readNumber = 0 #index of read, updated each time
-	readList = reads[chrom][binNum]
+	readList = readsForChrom[binNum]
 	left = 0
 	right = len(readList) - 1	
 	curr = 0
@@ -81,7 +81,7 @@ def getBins(chrom, start, end, numBins, rn, reads, binLength):
 		
 		# xstart = datetime.now()
 		# for i in range(100):
-		score, readNumber, binNum = getAverageScore(reads, chrom, currStart, currEnd, binNum, readNumber) #updates read number also
+		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) #updates read number also
 		# xend = datetime.now()
 		# delta = xend - xstart
 		# print delta.total_seconds()
@@ -97,11 +97,11 @@ def getBins(chrom, start, end, numBins, rn, reads, binLength):
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToRegion, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength):
+def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
-	for region in chrToRegion[chrom]:
+	for region in chrToIndivRegions[chrom]:
 		start = int(region[1])
 		end = int(region[2])
 		
@@ -125,7 +125,7 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, stranded, folderStra
 		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
 
 		# getting bins and reading from end to start if region is antisense
-		regionBins = getBins(chrom, start, end, numBins, 0, reads, binLength)
+		regionBins = getBins(start, end, numBins, 0, readsForChrom, binLength)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
 		outputRow = region
@@ -135,26 +135,8 @@ def regionWorker(binFolder, regionType, chrom, chrToRegion, stranded, folderStra
 
 	ofile.close()
 	
-def regionProcess(binFolder, regionType, chrToRegion, chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength):
-	logger.info("Working on %s", regionType)
-	procs = []
-	for chrom in chroms:
-		if chrom not in reads: continue
-		p = multiprocessing.Process(target=regionWorker, args=(binFolder, regionType, chrom, chrToRegion, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength))
-		procs.append(p)
-		p.start()
-	for p in procs:
-		p.join()	# wait till all are done before moving on
-		
-
-
-
-
-
-
-
 #Loading reads for each bedgraph, for each chromosome
-def getReads(conn, chrom, graph, binLength):
+def getReads(chrom, graph, binLength):
 	ifile = open(graph, 'r')
 	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = {}
@@ -176,31 +158,28 @@ def getReads(conn, chrom, graph, binLength):
 		readsForChrom[bin2].append([start, end, score])
 
 	ifile.close()
-	conn.send(readsForChrom)
-	conn.close()
-	logger.info('%s done', chrom)
-	
-def readBedGraph(ifolder, chroms, binLength):
-	reads = {} 	# get all chromosomes in the reads dict
-	procs = []
-	chromToConn = {}
-	
-	for chrom in chroms:
-		if not glob.glob(ifolder + chrom + '.bedGraph'): continue
-		logger.info('%s %s', chrom, ifolder + chrom + '.bedGraph')
-		
-		# putting the pipe connections into a list. 
-		parent_conn, child_conn = multiprocessing.Pipe()
-		chromToConn[chrom] = parent_conn
+	return readsForChrom
 
-		p = multiprocessing.Process(target=getReads, args=(child_conn, chrom, ifolder + chrom + '.bedGraph', binLength))
-		p.start()
-		procs.append(p)
+# reads bedgraph and does region processing for each chromosome
+def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap):
+	# reads in bedgraph
+	if not glob.glob(graphFolder + chrom + '.bedGraph'): return
+	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
+	readsForChrom = getReads(chrom, graphFolder + chrom + '.bedGraph', binLength)
+	
+	# processes regions
+	# tstart = datetime.now()
+	for region in regions:
+		info = regions[region]
+		stranded = True if info[2]=='y' else False
+		limitSize = True if info[3]=='y' else False
+		extendRegion = True if info[5]=='y' else False
+		numBins = int(info[4])
 		
-	# receiving pipe outputs into a dictionary
-	for chrom in chromToConn: 
-		reads[chrom] = chromToConn[chrom].recv()
-		chromToConn[chrom].close()
-	for proc in procs: proc.join()
-
-	return reads
+		chrToIndivRegions = regionToChrMap[region]
+		regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
+	
+	logger.info('%s done: %s', chrom, ', '.join(regions.keys()))
+	# tend = datetime.now()
+	# delta = tend - tstart
+	# print delta.total_seconds()

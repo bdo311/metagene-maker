@@ -133,6 +133,7 @@ def processRegions(regions):
 
 	return regionToChrMap
 
+
 def main():		
 	# reading config file
 	config, folders, regions = readConfigFile(args.config_file)
@@ -170,24 +171,15 @@ def main():
 		# use the regions that correspond to the bedgraph strand
 		[binFolder, graphFolder, folderStrand] = folderToGraph[folder]
 
-		# process all regions for each sub-bedgraph
 		for i in range(len(allChroms)):
-			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]			
-			reads = readBedGraph(graphFolder, chroms, binLength)
-			if reads == {}: continue
-			
-			# tstart = datetime.now()
-			for region in regions:
-				info = regions[region]
-				stranded = True if info[2]=='y' else False
-				limitSize = True if info[3]=='y' else False
-				extendRegion = True if info[5]=='y' else False
-				numBins = int(info[4])
+			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
 				
-				regionProcess(binFolder, region, regionToChrMap[region], chroms, stranded, folderStrand, limitSize, numBins, extendRegion, reads, binLength)
-			# tend = datetime.now()
-			# delta = tend - tstart
-			# print delta.total_seconds()
+			procs=[]
+			for chrom in chroms:
+				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap))
+				p.start()
+				procs.append(p)		
+			for proc in procs: proc.join()		
 			
 	# xend = datetime.now()
 	# delta = xend - xstart
