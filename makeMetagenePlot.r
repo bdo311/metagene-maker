@@ -17,7 +17,8 @@ extrap = function(x) {
 }
 
 # extrap
-data = read.table(fn, sep='\t', fill=TRUE, header=FALSE, colClasses=c(rep("character",6),rep("numeric",numBins+1)))
+no_col = max(count.fields(fn, sep = "\t"))
+data = read.table(fn, sep='\t', fill=TRUE, header=FALSE, col.names=1:max(no_col), colClasses=c(rep("character",6),rep("numeric",no_col-6)))
 
 rownames(data) = make.names(data[,nameCol], unique=TRUE)
 data = data[,startCol:ncol(data)]
