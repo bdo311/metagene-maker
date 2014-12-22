@@ -49,7 +49,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 	return float(totalScore)/totalLength, readNumber, binNum
 
 # gets the array of bins for each gene
-def getBins(start, end, numBins, rn, readsForChrom, binLength):
+def getBins(start, end, numBins, readsForChrom, binLength):
 
 	currStart = start
 	binNum = start/binLength    
@@ -125,9 +125,101 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, fold
 		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
 
 		# getting bins and reading from end to start if region is antisense
-		regionBins = getBins(start, end, numBins, 0, readsForChrom, binLength)
+		regionBins = getBins(start, end, numBins, readsForChrom, binLength)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
+		outputRow = region
+		outputRow.append(sum(regionBins)) 
+		outputRow.extend(regionBins)
+		writer.writerow(outputRow)
+
+	ofile.close()
+	
+
+# gets the array of bins for each gene
+def blockGetBins(blocks, numBins, readsForChrom, binLength):
+
+	currStart = start
+	binNum = start/binLength    
+
+	# better way to find the initial readnumber; saves a few seconds
+	readNumber = 0 #index of read, updated each time
+	readList = readsForChrom[binNum]
+	left = 0
+	right = len(readList) - 1	
+	curr = 0
+	while True:
+		curr = (left + right)/2
+		if curr == left or curr == right: break
+		if currStart < readList[curr][0]: right = curr
+		else: left = curr					
+	
+	# walking through each bin for the region
+	scores = []
+	readNumber = curr-1		
+	totalLength = sum([bk[1]-bk[0] for bk in blocks])
+	end = blocks[-1][1]
+	spacingPerBin = int(math.ceil(totalLength/float(numBins)))
+
+	# blocks is [[block1s, block1e], [block2s, block2e], ...]
+	blockNum = 0
+	contBlock = False
+	spacingLeft = spacingPerBin
+	retainedScore = 0
+	while currStart < end:
+		blockStart, blockEnd = blocks[blockNum][0], blocks[blockNum][1]
+		currEnd = currStart + spacingPerBin - 1 # end of my window
+		if contBlock:
+			contBlock = False
+			currEnd = 
+		if currEnd > end: currEnd = end # last bin can't go past TES
+		if currEnd > blockEnd: 
+			contBlock = True
+			blockNum += 1
+			spacingLeft = currEnd - blockEnd
+			currEnd 
+		
+		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) 
+		scores.append(score)
+		currStart = currEnd + 1 # new start of my window
+
+	return scores
+
+# for each chromosome, get bins corresponding to each region in the chromosome
+def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength):
+	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
+	writer = csv.writer(ofile, 'textdialect')
+
+	for region in chrToIndivRegions[chrom]:
+	
+		# get info for each region
+		start = int(region[1])
+		end = int(region[2])
+		blockLengthStr = region[10] #fix
+		blockStartStr = region[11] #fix
+		blockLengths = [int(x) for x in blockLengthStr.split(',')]
+		blockStarts = [int(x) for x in blockStartStr.split(',')]
+		
+		# make blocks
+		blocks = []
+		for i in range(len(blockStarts)):
+			blockStart = start + blockStarts[i]
+			blockEnd = blockStart + blockLengths[i]
+			blocks.append([blockStart, blockEnd])
+		
+		# limits
+		totalLength = sum(blockLengths)
+		if limitSize:
+			if totalLength < 200 or totalLength > 200000: continue 
+		
+		# getting bins and reading from end to start if region is antisense
+		# only taking the regions that match the strand of bedgraph, 
+		# if bedgraph and region file are both stranded
+		regionBins = blockGetBins(blocks, numBins, readsForChrom, binLength)
+		if stranded: strand = region[5]
+		if stranded and strand == '-': regionBins = regionBins[::-1] 
+
+		# write to file
 		outputRow = region
 		outputRow.append(sum(regionBins)) 
 		outputRow.extend(regionBins)

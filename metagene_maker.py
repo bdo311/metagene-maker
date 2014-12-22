@@ -165,25 +165,25 @@ def main():
 	logger.info("\nReading in bedgraphs and making profiles for each region")
 	binLength = args.l
 	
-	# #xstart = datetime.now()
-	# for folder in folderToGraph:
-		# # if my bedgraph is stranded and my regions are stranded, only 
-		# # use the regions that correspond to the bedgraph strand
-		# [binFolder, graphFolder, folderStrand] = folderToGraph[folder]
+	#xstart = datetime.now()
+	for folder in folderToGraph:
+		# if my bedgraph is stranded and my regions are stranded, only 
+		# use the regions that correspond to the bedgraph strand
+		[binFolder, graphFolder, folderStrand] = folderToGraph[folder]
 
-		# for i in range(len(allChroms)):
-			# chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
+		for i in range(len(allChroms)):
+			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
 				
-			# procs=[]
-			# for chrom in chroms:
-				# p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap))
-				# p.start()
-				# procs.append(p)		
-			# for proc in procs: proc.join()		
+			procs=[]
+			for chrom in chroms:
+				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap))
+				p.start()
+				procs.append(p)		
+			for proc in procs: proc.join()		
 			
-	# # xend = datetime.now()
-	# # delta = xend - xstart
-	# # print delta.total_seconds()
+	# xend = datetime.now()
+	# delta = xend - xstart
+	# print delta.total_seconds()
 
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
