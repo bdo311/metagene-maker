@@ -73,9 +73,9 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 
 	# walking through each bin for the region
 	scores = []
+	binNum = start/binLength    	
 	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart) - 1
 	currStart = start
-	binNum = start/binLength    	
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 
 	while currStart < end:
@@ -120,7 +120,7 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, fold
 		regionBins = getBins(start, end, numBins, readsForChrom, binLength)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
-		outputRow = region
+		outputRow = region[:6]
 		outputRow.append(sum(regionBins)) 
 		outputRow.extend(regionBins)
 		writer.writerow(outputRow)
@@ -140,9 +140,10 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 
 	# blocks is [[block1s, block1e], [block2s, block2e], ...]
 	# variables that will change as the loop iterates
-	binNum = currStart/binLength    				
 	currStart = blocks[0][0]
+	binNum = currStart/binLength    				
 	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart) - 1
+	if readNumber < 0: readNumber = 0
 		
 	blockNum = 0
 	contBlock = False
@@ -151,19 +152,23 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 
 	while True:
 		blockStart, blockEnd = blocks[blockNum][0], blocks[blockNum][1] #info about current block
-		currEnd = currStart + spacingLeft
+		currEnd = currStart + spacingPerBin - oldPartialLength
 			
 		if currEnd >= end: currEnd = end # last bin can't go past TES
 		if currEnd <= blockEnd:
-			print "case 1: ", currStart, currEnd
+			# print "case 1: ", currStart, currEnd, oldPartialLength, contBlock
 			score,readNumber,binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber)
 			newPartialLength = currEnd - currStart
-			score = (score * newPartialLength + partialScore * oldPartialLength)/float(spacingPerBin) #weighted average
+			# print 'individual score: ', score
+			# print 'newPartialLength: ', newPartialLength
+			# print 'oldPartialScore: ', oldPartialScore
+			# print 'oldPartialLength: ', oldPartialLength
+			score = (score * newPartialLength + oldPartialScore * oldPartialLength)/float(newPartialLength + oldPartialLength) #weighted average
+			# print 'overall score: ', score
 			scores.append(score)
 			
 			# reset things
 			contBlock = False
-			spacingLeft = spacingPerBin
 			oldPartialLength = 0
 			oldPartialScore = 0
 			
@@ -174,12 +179,18 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 				blockNum += 1
 				currStart = blocks[blockNum][0]
 		else:
-			print "case 2: ", currStart, blockEnd, spacingLeft\
+			# print "case 2: ", currStart, blockEnd, oldPartialLength, contBlock
 			currEnd = blockEnd
 			score,readNumber,binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber)
 			newPartialLength = currEnd - currStart
-			score = (score * newPartialLength + partialScore * oldPartialLength)/float(newPartialLength + oldPartialLength) #weighted average
+			# print 'individual score: ', score
+			# print 'newPartialLength: ', newPartialLength
+			# print 'oldPartialScore: ', oldPartialScore
+			# print 'oldPartialLength: ', oldPartialLength
 			
+			score = (score * newPartialLength + oldPartialScore * oldPartialLength)/float(newPartialLength + oldPartialLength) #weighted average
+			# print 'overall score: ', score
+
 			# carry over to new block
 			contBlock = True
 			oldPartialScore = score
@@ -189,6 +200,7 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 			# define start for next iteration of while loop
 			currStart = blocks[blockNum][0] # start at the next bin
 		
+	# print scores
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
@@ -203,21 +215,30 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded,
 		end = int(region[2])
 		blockLengthStr = region[10] #fix
 		blockStartStr = region[11] #fix
-		blockLengths = [int(x) for x in blockLengthStr.split(',')]
-		blockStarts = [int(x) for x in blockStartStr.split(',')]
 		
+		# split block info
+		blockLengths = []
+		for x in blockLengthStr.split(','):
+			try: blockLengths.append(int(x))
+			except: pass
+		blockStarts = []
+		for x in blockStartStr.split(','):
+			try: blockStarts.append(int(x))
+			except: pass
+				
 		# make blocks
 		blocks = []
 		for i in range(len(blockStarts)):
 			blockStart = start + blockStarts[i]
 			blockEnd = blockStart + blockLengths[i]
 			blocks.append([blockStart, blockEnd])
+		# print blocks
 		
 		# limits
 		totalLength = sum(blockLengths)
 		if limitSize:
 			if totalLength < 200 or totalLength > 200000: continue 
-		
+			
 		# getting bins and reading from end to start if region is antisense
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
@@ -226,7 +247,7 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded,
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
 		# write to file
-		outputRow = region
+		outputRow = region[:6]
 		outputRow.append(sum(regionBins)) 
 		outputRow.extend(regionBins)
 		writer.writerow(outputRow)
@@ -239,7 +260,11 @@ def getReads(chrom, graph, binLength):
 	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = {}
 
+	# counter = 0
 	for row in reader:
+		# counter += 1
+		# if counter == 10000: break
+		
 		start = int(row[1])
 		end = int(row[2])
 		score = float(row[3])
@@ -259,7 +284,7 @@ def getReads(chrom, graph, binLength):
 	return readsForChrom
 
 # reads bedgraph and does region processing for each chromosome
-def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap):
+def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap, regionToBedType):
 	# reads in bedgraph
 	if not glob.glob(graphFolder + chrom + '.bedGraph'): return
 	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
@@ -275,7 +300,8 @@ def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, reg
 		numBins = int(info[4])
 		
 		chrToIndivRegions = regionToChrMap[region]
-		regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
+		if regionToBedType[region] == 'BED6': regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
+		else: blockRegionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
 	
 	logger.info('%s done: %s', chrom, ', '.join(regions.keys()))
 	# tend = datetime.now()

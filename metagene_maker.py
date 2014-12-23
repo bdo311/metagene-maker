@@ -105,6 +105,11 @@ def isBed(row):
 	try:
 		a=int(row[1])
 		b=int(row[2])
+		
+		if len(row)>11: 
+			c=len(row[10].split(','))
+			d=len(row[11].split(','))
+			if c!=d: return False
 	except: return False
 	return True
 	
@@ -121,17 +126,25 @@ def getChrToRegion(fn, header):
 				logger.info("Line %d of file %s is not in BED format", counter, fn)
 				exit()
 			regions[row[0]].append(row)
-	return regions
+			
+	# is region BED6 or BED12?
+	rowLen = len(regions[regions.keys()[0]][0])
+	bedType = 'BED6' if rowLen<11 else 'BED12'
+	
+	return regions, bedType
 
 def processRegions(regions):
 	regionToChrMap = {}
+	regionToBedType = {}
 	for region in regions:
 		info = regions[region]
 		loc = info[0]
 		isHeader = True if info[1] == 'y' else False
-		regionToChrMap[region] = getChrToRegion(loc, isHeader)
+		regionInfo = getChrToRegion(loc, isHeader)
+		regionToChrMap[region] = regionInfo[0]
+		regionToBedType[region] = regionInfo[1]
 
-	return regionToChrMap
+	return regionToChrMap, regionToBedType
 
 
 def main():		
@@ -156,10 +169,10 @@ def main():
 		logger.info('%s: %s', f, folderToGraph[f][0])
 	
 	# processing regions, checking that they are valid bed files
-	regionToChrMap = processRegions(regions)
+	regionToChrMap, regionToBedType = processRegions(regions)
 	logger.info("\nProcessed regions: %s", ', '.join(regionToChrMap.keys()))
 	for r in regionToChrMap:
-		logger.info('%s: %s', r, regions[r][0])
+		logger.info('%s: %s %s', r, regionToBedType[r], regions[r][0])
 
 	# making bins
 	logger.info("\nReading in bedgraphs and making profiles for each region")
@@ -176,7 +189,7 @@ def main():
 				
 			procs=[]
 			for chrom in chroms:
-				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap))
+				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap, regionToBedType))
 				p.start()
 				procs.append(p)		
 			for proc in procs: proc.join()		
@@ -184,6 +197,7 @@ def main():
 	# xend = datetime.now()
 	# delta = xend - xstart
 	# print delta.total_seconds()
+	#exit()
 
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
