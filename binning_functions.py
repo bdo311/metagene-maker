@@ -89,7 +89,7 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength):
+def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
@@ -111,13 +111,25 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, fold
 			region[1] = start
 			region[2] = end
 			
+		# getting bins and reading from end to start if region is antisense
+		if extension > 0:
+			extBins = numBins/4
+			coreBins = numBins/2
+			
+			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
+			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
+			regionBins = getBins(start, end, coreBins, readsForChrom, binLength)
+			
+			leftSideBins.append(regionBins)
+			leftSideBins.append(rightSideBins)
+			regionBins = leftSideBins
+		else: 
+			regionBins = getBins(start, end, numBins, readsForChrom, binLength)
+			
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
 		if stranded: strand = region[5]
 		#if folderStrand != '0' and stranded and strand != folderStrand: continue 
-
-		# getting bins and reading from end to start if region is antisense
-		regionBins = getBins(start, end, numBins, readsForChrom, binLength)
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
 		outputRow = region[:6]
@@ -242,7 +254,20 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded,
 		# getting bins and reading from end to start if region is antisense
 		# only taking the regions that match the strand of bedgraph, 
 		# if bedgraph and region file are both stranded
-		regionBins = blockGetBins(blocks, numBins, readsForChrom, binLength)
+		if extension > 0:
+			extBins = numBins/4
+			coreBins = numBins/2
+			
+			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
+			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
+			regionBins = blockGetBins(start, end, coreBins, readsForChrom, binLength)
+			
+			leftSideBins.append(regionBins)
+			leftSideBins.append(rightSideBins)
+			regionBins = leftSideBins
+		else: 
+			regionBins = blockGetBins(start, end, numBins, readsForChrom, binLength)
+			
 		if stranded: strand = region[5]
 		if stranded and strand == '-': regionBins = regionBins[::-1] 
 
@@ -297,11 +322,12 @@ def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, reg
 		stranded = True if info[2]=='y' else False
 		limitSize = True if info[3]=='y' else False
 		extendRegion = True if info[5]=='y' else False
+		sideExtension = int(info[6])
 		numBins = int(info[4])
 		
 		chrToIndivRegions = regionToChrMap[region]
-		if regionToBedType[region] == 'BED6': regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
-		else: blockRegionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength)
+		if regionToBedType[region] == 'BED6': regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength)
+		else: blockRegionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength)
 	
 	logger.info('%s done: %s', chrom, ', '.join(regions.keys()))
 	# tend = datetime.now()

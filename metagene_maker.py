@@ -15,10 +15,18 @@ from merge_bins import *
 csv.register_dialect("textdialect", delimiter='\t')
 
 # parser
-parser = argparse.ArgumentParser(description="metagene-maker: obtain average profiles of NGS datasets over your favorite regions", epilog="Example: python metagene_maker.py config.txt")
+parser = argparse.ArgumentParser(description="metagene-maker: obtain average profiles of NGS datasets over your favorite regions", epilog="Example: python metagene_maker.py config.txt ChIP_exp outputDir/")
 parser.add_argument('config_file', metavar='config_file', help='required configuration file')
+parser.add_argument('prefix', metavar='prefix', help="Prefix of output files")
+parser.add_argument('outputDir', metavar='output_directory', help="Directory where output folders will be written")
 parser.add_argument('-l', metavar='binLength', type=int, help="Bases per window when processing bedgraph. Default is 2,000,000.", default=2000000)
+parser.add_argument('-p', metavar='processors', type=int, help="Number of cores to use. Default is 4.", default=4)
 args = parser.parse_args()
+config_file = args.config_file
+numProcs = args.p
+parentDir = args.outputDir
+name = args.prefix
+binLength = args.l
 
 # log file
 logger=logging.getLogger('')
@@ -34,19 +42,11 @@ logger.addHandler(ch)
 logger.addHandler(fh)
 
 def readConfigFile(fn):
-	# Input: a configuration file with parameters, folders, and regions
+	# Input: a configuration file with folders and regions
 	# Output: these parameters in a hashmap format
 
 	ifile = open(fn, 'r')
 	reader = csv.reader(ifile, 'textdialect')
-
-	# params
-	config = {}
-	for row in reader:
-		if len(row)==0: continue
-		if 'folder' in row[0]: break
-		if '#' in row[0] or row[0]=='': continue
-		config[row[0]] = row[1]
 
 	# folders
 	folders = {}
@@ -63,10 +63,11 @@ def readConfigFile(fn):
 		if '#' in row[0] or row[0]=='': continue
 		regions[row[0]] = row[1:]
 
-	return config, folders, regions
+	return folders, regions
 
 def processFolders(parentDir, folders, regions, numChr):
 	folderToGraph = {}
+	allChroms = set()
 	for folder in folders:
 		# setting up folders
 		os.chdir(parentDir)
@@ -84,20 +85,23 @@ def processFolders(parentDir, folders, regions, numChr):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		if len(glob.glob("*.bedGraph")) != numChr + 2: # 23 --> 25 for human (chr1-22, x, y, m), 20 --> 22 for mouse (chr1-19, x, y, m)
-			os.system("rm -f *.bedGraph")
-			logger.info("\nSplitting up bedgraph for %s", folder)
-			#SNF mod: awk -> gawk 
-			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
-			logger.info(cmd)
-			os.system(cmd)
+		os.system("rm -f *.bedGraph")
+		logger.info("\nSplitting up bedgraph for %s", folder)
+		cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
+		logger.info(cmd)
+		os.system(cmd)
 
+		# adding chromosomes to list of all chroms
+		files = [os.path.basename(fn) for fn in glob.glob('*.bedGraph')]
+		chrs = [x.replace('.bedGraph', '') for x in files]
+		allChroms.update(set(chrs))		
+		
 		# making folder to bedgraph relationship
 		binFolder = parentDir + '/' + folder + '/bins/'
 		graphFolder = parentDir + '/' + folder + '/bedGraphByChr/'
 		folderToGraph[folder] = [binFolder, graphFolder, folders[folder][1]] #bin folder --> [graph folder, strand]
 
-	return folderToGraph
+	return folderToGraph, allChroms
 
 # checks whether file is a bed file
 def isBed(row):
@@ -140,6 +144,18 @@ def processRegions(regions):
 		info = regions[region]
 		loc = info[0]
 		isHeader = True if info[1] == 'y' else False
+		
+		# check that number of bins and the extension size will be handled gracefully
+		numBins = int(info[4])
+		sideExtension = int(info[6])
+		if sideExtension:
+			if numBins % 4 != 0: 
+				logger.info("Number of bins in region %s must be a multiple of 4 when using side extensions", region)
+				exit()
+			if sideExtension % (numBins/4) != 0: 
+				logger.info("Size of extension in region %s must be a multiple of the number of bins divided by 4", region)
+				exit()
+				
 		regionInfo = getChrToRegion(loc, isHeader)
 		regionToChrMap[region] = regionInfo[0]
 		regionToBedType[region] = regionInfo[1]
@@ -147,23 +163,13 @@ def processRegions(regions):
 	return regionToChrMap, regionToBedType
 
 
-def main():		
-	# reading config file
-	config, folders, regions = readConfigFile(args.config_file)
+def main():			
+	# read config file
+	folders, regions = readConfigFile(config_file)
 	logger.info("\nRead configuration file")
-	for c in config: logger.info('%s: %s', c, config[c])
-
-	# chromosome configuration
-	organism = config['organism(mm9 or hg19)']
-	numChr = 23 if organism == 'hg19' else 20
-	allChroms = ['chr' + str(x) for x in range(1,numChr)]
-	allChroms.extend(['chrX', 'chrY', 'chrM'])
-	threads = int(config['threads'])
-	numProcs = threads
 	
 	# processing folders and bedgraphs
-	parentDir = config["parentDir"]
-	folderToGraph = processFolders(parentDir, folders, regions, numChr)
+	folderToGraph, allChroms = processFolders(parentDir, folders, regions, numChr)
 	logger.info("\nProcessed folders: %s", ', '.join(folderToGraph.keys()))
 	for f in folderToGraph:
 		logger.info('%s: %s', f, folderToGraph[f][0])
@@ -176,7 +182,6 @@ def main():
 
 	# making bins
 	logger.info("\nReading in bedgraphs and making profiles for each region")
-	binLength = args.l
 	
 	#xstart = datetime.now()
 	for folder in folderToGraph:
