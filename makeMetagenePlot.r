@@ -10,23 +10,22 @@ nameCol = strtoi(args[4]) + 1
 numBins = strtoi(args[5])
 fn = args[6]
 
-extrap = function(x) {
-  num = sum(!is.na(x))
-  if (num==numBins) return(x)
-  approx(1:num, x[1:num], n=numBins)$y
-}
+# this should not be needed; done with interp in numpy
+# extrap = function(x) {
+  # num = sum(!is.na(x))
+  # if (num==numBins) return(x)
+  # approx(1:num, x[1:num], n=numBins)$y
+# }
 
-# extrap
-no_col = max(count.fields(fn, sep = "\t"))
-data = read.table(fn, sep='\t', fill=TRUE, header=FALSE, col.names=1:max(no_col), colClasses=c(rep("character",6),rep("numeric",no_col-6)))
+data = read.table(fn, sep='\t', fill=TRUE, header=FALSE, col.names=1:(numBins + 7), colClasses=c(rep("character",6),rep("numeric",numBins + 1)))
 
 rownames(data) = make.names(data[,nameCol], unique=TRUE)
 data = data[,startCol:ncol(data)]
 
 if (numBins > 1) {
-	data.extrap = t(apply(data, 1, extrap)) # coerce to exactly some number of bins
+	#data.extrap = t(apply(data, 1, extrap)) # coerce to exactly some number of bins
 
-	# Scale and collapse data, and print averages to files
+	# Collapse data, and print averages to files
 	data.avg = apply(data.extrap, 2, mean, na.rm=TRUE)
 	write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t', quote=FALSE)
 

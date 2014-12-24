@@ -1,14 +1,13 @@
 #!/usr/bin/python
 # metagene_maker.py
-# 8/29/14
+# 8/29/14, last updated 12/23/14
 # makes metagenes for bedgraphs and regions according to a configuration file
 
 # SNF TODO 
-# - does not handle short (especially 1 nt long) regions - dies inside Rscript.  Use some cutoff value to trim super short things?  These may distort analysis 
 # - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
-# - parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa 
 
 import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess, logging, argparse
+import numpy as np
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
@@ -24,9 +23,10 @@ parser.add_argument('-p', metavar='processors', type=int, help="Number of cores 
 args = parser.parse_args()
 config_file = args.config_file
 numProcs = args.p
-parentDir = args.outputDir
 name = args.prefix
 binLength = args.l
+parentDir = args.outputDir
+if parentDir[0] != '/': parentDir = os.getcwd() + '/' + parentDir
 
 # log file
 logger=logging.getLogger('')
@@ -65,7 +65,7 @@ def readConfigFile(fn):
 
 	return folders, regions
 
-def processFolders(parentDir, folders, regions, numChr):
+def processFolders(parentDir, folders, regions):
 	folderToGraph = {}
 	allChroms = set()
 	for folder in folders:
@@ -85,7 +85,7 @@ def processFolders(parentDir, folders, regions, numChr):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		os.system("rm -f *.bedGraph")
+		#os.system("rm -f *.bedGraph")
 		logger.info("\nSplitting up bedgraph for %s", folder)
 		cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
 		logger.info(cmd)
@@ -95,7 +95,7 @@ def processFolders(parentDir, folders, regions, numChr):
 		files = [os.path.basename(fn) for fn in glob.glob('*.bedGraph')]
 		chrs = [x.replace('.bedGraph', '') for x in files]
 		allChroms.update(set(chrs))		
-		
+				
 		# making folder to bedgraph relationship
 		binFolder = parentDir + '/' + folder + '/bins/'
 		graphFolder = parentDir + '/' + folder + '/bedGraphByChr/'
@@ -107,12 +107,11 @@ def processFolders(parentDir, folders, regions, numChr):
 def isBed(row):
 	if 'chr' not in row[0]: return False
 	try:
-		a=int(row[1])
-		b=int(row[2])
+		a,b=int(row[1]), int(row[2]) #start/end ok?
 		
 		if len(row)>11: 
-			c=len(row[10].split(','))
-			d=len(row[11].split(','))
+			if ',' not in row[10] or ',' not in row[11]: return False #BED12s must have commas
+			c,d =len(row[10].split(',')), len(row[11].split(',')) #number of blocks must be the same
 			if c!=d: return False
 	except: return False
 	return True
@@ -127,7 +126,7 @@ def getChrToRegion(fn, header):
 			counter += 1
 			row = line.split()
 			if not isBed(row):
-				logger.info("Line %d of file %s is not in BED format", counter, fn)
+				logger.info("Line %d of file %s is not in BED format. Exiting.", counter, fn)
 				exit()
 			regions[row[0]].append(row)
 			
@@ -147,19 +146,26 @@ def processRegions(regions):
 		
 		# check that number of bins and the extension size will be handled gracefully
 		numBins = int(info[4])
+		extendRegion = info[5]
 		sideExtension = int(info[6])
+
+		if sideExtension and extendRegion=='y': 
+			logger.info("Region %s cannot be extended two different ways. Exiting.", region)
+			exit()
 		if sideExtension:
 			if numBins % 4 != 0: 
-				logger.info("Number of bins in region %s must be a multiple of 4 when using side extensions", region)
+				logger.info("Number of bins in region %s must be a multiple of 4 when using fixed side extensions (column sideExtensions). Exiting.", region)
 				exit()
 			if sideExtension % (numBins/4) != 0: 
-				logger.info("Size of extension in region %s must be a multiple of the number of bins divided by 4", region)
+				logger.info("Size of fixed extension in region %s (column sideExtensions) must be a multiple of the number of bins divided by 4. Exiting.", region)
 				exit()
-				
 		regionInfo = getChrToRegion(loc, isHeader)
 		regionToChrMap[region] = regionInfo[0]
 		regionToBedType[region] = regionInfo[1]
-
+		if regionInfo[1] == 'BED12':
+			if extendRegion == 'y': 
+				logger.info("Spliced regions in %s cannot be extended using extendRegion. Exiting.", region)
+				exit()
 	return regionToChrMap, regionToBedType
 
 
@@ -169,7 +175,9 @@ def main():
 	logger.info("\nRead configuration file")
 	
 	# processing folders and bedgraphs
-	folderToGraph, allChroms = processFolders(parentDir, folders, regions, numChr)
+	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
+	folderToGraph, allChroms = processFolders(parentDir, folders, regions)
+	allChroms = list(allChroms)
 	logger.info("\nProcessed folders: %s", ', '.join(folderToGraph.keys()))
 	for f in folderToGraph:
 		logger.info('%s: %s', f, folderToGraph[f][0])
@@ -183,27 +191,21 @@ def main():
 	# making bins
 	logger.info("\nReading in bedgraphs and making profiles for each region")
 	
-	#xstart = datetime.now()
 	for folder in folderToGraph:
 		# if my bedgraph is stranded and my regions are stranded, only 
 		# use the regions that correspond to the bedgraph strand
 		[binFolder, graphFolder, folderStrand] = folderToGraph[folder]
-
 		for i in range(len(allChroms)):
 			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
-				
+			if chroms == []: break
 			procs=[]
 			for chrom in chroms:
 				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap, regionToBedType))
 				p.start()
 				procs.append(p)		
 			for proc in procs: proc.join()		
-			
-	# xend = datetime.now()
-	# delta = xend - xstart
-	# print delta.total_seconds()
-	#exit()
 
+	exit()
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
 	folders = folderToGraph.keys() 
@@ -218,7 +220,6 @@ def main():
 	for p in procs: p.join()
 
 	# merging all files, and writing average files
-	name = config["name"]
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")

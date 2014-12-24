@@ -1,8 +1,9 @@
 # binning_functions.py
-# 8/29/14
+# 8/29/14, last updated 12/23/14
 # helper functions to make bins for each region
 
 import os, glob, csv, re, collections, math, multiprocessing, sys, time, logging
+import numpy as np
 from datetime import datetime
 
 logger = logging.getLogger('')
@@ -58,8 +59,6 @@ def getInitialReadNumber(readsForChrom, binNum, currStart):
 	curr = 0
 	while True:
 		curr = (left + right)/2
-		#print curr, currStart, readList[curr]
-		#time.sleep(0.3)
 		if curr == left or curr == right: break
 		if currStart < readList[curr][0]: right = curr
 		else: left = curr	
@@ -73,9 +72,9 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 
 	# walking through each bin for the region
 	scores = []
-	binNum = start/binLength    	
-	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart) - 1
+	binNum = start/binLength   
 	currStart = start
+	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart) - 1
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 
 	while currStart < end:
@@ -85,11 +84,16 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) #updates read number also
 		scores.append(score)
 		currStart = currEnd # new start of my window
-
+	
+	# make sure the length of scores is right
+	if len(scores) != numBins:
+		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
+		scores = np.interp(a, range(len(scores)), scores)
+	assert len(scores)==numBins
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength):
+def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, extension, readsForChrom, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
@@ -97,8 +101,6 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, fold
 		start = int(region[1])
 		end = int(region[2])
 		
-		#print "SNF: regionworker start %d end %d limitSize %r region %s" % (start, end, limitSize, region)
-
 		# binning doesn't really make sense here so just ignore
 		if limitSize:
 			if end - start < 200 or end - start > 200000: continue 
@@ -117,11 +119,11 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, fold
 			coreBins = numBins/2
 			
 			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
-			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
 			regionBins = getBins(start, end, coreBins, readsForChrom, binLength)
+			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
 			
-			leftSideBins.append(regionBins)
-			leftSideBins.append(rightSideBins)
+			leftSideBins.extend(regionBins)
+			leftSideBins.extend(rightSideBins)
 			regionBins = leftSideBins
 		else: 
 			regionBins = getBins(start, end, numBins, readsForChrom, binLength)
@@ -212,11 +214,15 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 			# define start for next iteration of while loop
 			currStart = blocks[blockNum][0] # start at the next bin
 		
-	# print scores
+	# make sure the length of scores is right
+	if len(scores) != numBins:
+		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
+		scores = np.interp(a, range(len(scores)), scores)
+	assert len(scores)==numBins
 	return scores
 
 # for each chromosome, get bins corresponding to each region in the chromosome
-def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, readsForChrom, binLength):
+def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extension, readsForChrom, binLength):
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
@@ -259,11 +265,11 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded,
 			coreBins = numBins/2
 			
 			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
+			regionBins = blockGetBins(blocks, coreBins, readsForChrom, binLength)
 			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
-			regionBins = blockGetBins(start, end, coreBins, readsForChrom, binLength)
 			
-			leftSideBins.append(regionBins)
-			leftSideBins.append(rightSideBins)
+			leftSideBins.extend(regionBins)
+			leftSideBins.extend(rightSideBins)
 			regionBins = leftSideBins
 		else: 
 			regionBins = blockGetBins(start, end, numBins, readsForChrom, binLength)
@@ -285,14 +291,8 @@ def getReads(chrom, graph, binLength):
 	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = {}
 
-	# counter = 0
-	for row in reader:
-		# counter += 1
-		# if counter == 10000: break
-		
-		start = int(row[1])
-		end = int(row[2])
-		score = float(row[3])
+	for row in reader:		
+		start, end, score = int(row[1]), int(row[2]), float(row[3])
 
 		# which bins does each interval go into?
 		binNum = start/binLength
@@ -312,11 +312,10 @@ def getReads(chrom, graph, binLength):
 def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap, regionToBedType):
 	# reads in bedgraph
 	if not glob.glob(graphFolder + chrom + '.bedGraph'): return
+
 	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
 	readsForChrom = getReads(chrom, graphFolder + chrom + '.bedGraph', binLength)
-	
 	# processes regions
-	# tstart = datetime.now()
 	for region in regions:
 		info = regions[region]
 		stranded = True if info[2]=='y' else False
@@ -327,9 +326,6 @@ def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, reg
 		
 		chrToIndivRegions = regionToChrMap[region]
 		if regionToBedType[region] == 'BED6': regionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength)
-		else: blockRegionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, extendRegion, sideExtension, readsForChrom, binLength)
+		else: blockRegionWorker(binFolder, region, chrom, chrToIndivRegions, stranded, folderStrand, limitSize, numBins, sideExtension, readsForChrom, binLength)
 	
 	logger.info('%s done: %s', chrom, ', '.join(regions.keys()))
-	# tend = datetime.now()
-	# delta = tend - tstart
-	# print delta.total_seconds()
