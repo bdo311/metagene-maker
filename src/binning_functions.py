@@ -22,7 +22,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 		except: #reached end of bin
 			binNum += 1
 			readNumber = 0
-			if binNum not in readsForChrom: break  #reached end of chromosome
+			if readsForChrom[binNum] == []: break  #reached end of chromosome
 			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 			
@@ -289,7 +289,7 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, stranded,
 def getReads(chrom, graph, binLength):
 	ifile = open(graph, 'r')
 	reader = csv.reader(ifile, 'textdialect')
-	readsForChrom = {}
+	readsForChrom = collections.defaultdict(lambda: [])
 
 	for row in reader:		
 		start, end, score = int(row[1]), int(row[2]), float(row[3])
@@ -300,9 +300,7 @@ def getReads(chrom, graph, binLength):
 		bin2 = bin1 - 1
 		
 		# result: bins are overlapping
-		if bin1 not in readsForChrom.keys(): readsForChrom[bin1] = []
 		readsForChrom[bin1].append([start, end, score])
-		if bin2 not in readsForChrom.keys(): readsForChrom[bin2] = []
 		readsForChrom[bin2].append([start, end, score])
 
 	ifile.close()
@@ -315,6 +313,7 @@ def processEachChrom(chrom, binFolder, graphFolder, folderStrand, binLength, reg
 
 	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
 	readsForChrom = getReads(chrom, graphFolder + chrom + '.bedGraph', binLength)
+	logger.info('Read %s', chrom)
 	# processes regions
 	for region in regions:
 		info = regions[region]

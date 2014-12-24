@@ -13,11 +13,11 @@ def mergeChrAndSort(folder):
 
 def mergeChr(folder):
 	os.chdir(folder)
-	#logger.info(folder)
+	#logger.info(folder)	
 	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 
 def folderWorker(start, end, folders, folderToGraph, regions):
-	script = os.path.split(os.path.realpath(__file__))[0] + "/makeMetagenePlot.r"
+	script = os.path.join(os.path.dirname(__file__), "/makeMetagenePlot.r")
 	
 	for i in range(start, end):
 		try: folder = folders[i]

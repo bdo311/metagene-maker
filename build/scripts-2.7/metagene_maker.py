@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python
 # metagene_maker.py
 # 8/29/14, last updated 12/23/14
 # makes metagenes for bedgraphs and regions according to a configuration file
@@ -85,11 +85,13 @@ def processFolders(parentDir, folders, regions):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		#os.system("rm -f *.bedGraph")
 		logger.info("\nSplitting up bedgraph for %s", folder)
-		cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
-		logger.info(cmd)
-		os.system(cmd)
+		if not glob.glob("done"): 
+			os.system("rm -f *.bedGraph")
+			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
+			logger.info(cmd)
+			os.system(cmd)
+			os.system("touch done")
 
 		# adding chromosomes to list of all chroms
 		files = [os.path.basename(fn) for fn in glob.glob('*.bedGraph')]
@@ -154,10 +156,10 @@ def processRegions(regions):
 			exit()
 		if sideExtension:
 			if numBins % 4 != 0: 
-				logger.info("Number of bins in region %s must be a multiple of 4 when using fixed side extensions (column sideExtensions). Exiting.", region)
+				logger.info("Number of bins in region %s (%d) must be a multiple of 4 when using fixed side extensions (column sideExtensions). Exiting.", region, numBins)
 				exit()
 			if sideExtension % (numBins/4) != 0: 
-				logger.info("Size of fixed extension in region %s (column sideExtensions) must be a multiple of the number of bins divided by 4. Exiting.", region)
+				logger.info("Size of fixed extension in region %s (%d) must be a multiple of the number of bins (%d) divided by 4. Exiting.", region, sideExtension, numBins)
 				exit()
 		regionInfo = getChrToRegion(loc, isHeader)
 		regionToChrMap[region] = regionInfo[0]
@@ -172,7 +174,6 @@ def processRegions(regions):
 def main():			
 	# read config file
 	folders, regions = readConfigFile(config_file)
-	logger.info("\nRead configuration file")
 	
 	# processing folders and bedgraphs
 	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
@@ -205,7 +206,7 @@ def main():
 				procs.append(p)		
 			for proc in procs: proc.join()		
 
-	exit()
+	
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
 	folders = folderToGraph.keys() 

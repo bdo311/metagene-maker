@@ -26,7 +26,7 @@ if (numBins > 1) {
 	#data.extrap = t(apply(data, 1, extrap)) # coerce to exactly some number of bins
 
 	# Collapse data, and print averages to files
-	data.avg = apply(data.extrap, 2, mean, na.rm=TRUE)
+	data.avg = apply(data, 2, mean, na.rm=TRUE)
 	write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t', quote=FALSE)
 
 	# Make plots of the scaled average data
@@ -38,4 +38,4 @@ if (numBins > 1) {
 	write.table(data.avg, paste('avgraw_', folderName, '_', regionName, '_', substr(fn, 1, nchar(fn)-4), ".txt", sep=''), sep='\t', quote=FALSE)
 }
 
-save(data, data.extrap, data.avg, file="data.RData")
+save(data, data.avg, file="data.RData")
