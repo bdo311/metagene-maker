@@ -19,8 +19,7 @@ def writeFile(name, mapping, direc):
 	ofile.close()
 
 def processFile(fileName, isMinus):
-	os.chdir("/home/raflynn/7SK/GROseq/combined")
-	print fileName
+	
 	avgFile = glob.glob(fileName + "*.txt")[0]
 	print avgFile
 	ifile = open(avgFile, 'r')
@@ -37,47 +36,37 @@ def processFile(fileName, isMinus):
 	ifile.close()
 	return values
 
-def processRegions(sample):
-	regions = ["tss", "geneBody", "tes"]
-	dir = "/home/raflynn/7SK/GROseq/"
-
+def processRegions(pair, folderPairs, regions, folderToGraph, parentDir):
+	plusSample = folderPairs[pair][0]
+	minusSample = folderPairs[pair][1]
 	
 	for region in regions:
 		# split allchr into plus and minus
-		plusdir = dir + sample + "_plus/bins/" + region + '/'
+		plusdir = plusSample + region + '/'
 		os.chdir(plusdir)
-		os.system("rm -f allchr_*.txt")
-		os.system("awk -F '\t' '{print >> \"allchr_\" $3 \".txt\"}' allchr.txt")
-		minusdir = dir + sample + "_minus/bins/" + region + '/'
+		os.system("gawk -F '\t' '{print >> \"allchr_\" $3 \".txt\"}' allchr_sorted.txt")
+		minusdir = minusSample + region + '/'
 		os.chdir(minusdir)
-		os.system("rm -f allchr_*.txt")
-		os.system("awk -F '\t' '{print >> \"allchr_\" $3 \".txt\"}' allchr.txt")
-		
-		# combine plus plus, minus minus for sense
+		os.system("gawk -F '\t' '{print >> \"allchr_\" $3 \".txt\"}' allchr_sorted.txt")
+			
+		# combine plus plus, minus minus for sense	
+		opath = parentDir + "/" + pair + "_sense/bins/"
+		os.chdir(opath)
+		os.system("mkdir " + region)
+		os.chdir(region)
 		file1 = plusdir + "/allchr_+.txt"
 		file2 = minusdir + "/allchr_-.txt"
-
-		opath = dir + "combined/"
-		ofile = sample + "_" + region + "_sense.txt"
-		os.system("cat " + file1 + " " + file2 + " > " + opath + ofile)
-		
-		os.chdir(opath)
-		cmd = "Rscript /home/raflynn/Scripts/metagene_maker/makeMetagenePlot.r " + sample + " " + region + " 6 0 100 " + ofile
-		print cmd
-		os.system(cmd)
+		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
 		
 		# combine plus minus, minus plus for antisense
+		opath = parentDir + "/" + pair + "_antisense/bins/"
+		os.chdir(opath)
+		os.system("mkdir " + region)
+		os.chdir(region)
 		file1 = minusdir + "/allchr_+.txt"
 		file2 = plusdir + "/allchr_-.txt"
+		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
 		
-		opath = dir + "combined/"
-		ofile = sample + "_" + region + "_antisense.txt"
-		os.system("cat " + file1 + " " + file2 + " > " + opath + ofile)
-		
-		os.chdir(opath)
-		cmd = "Rscript /home/raflynn/Scripts/metagene_maker/makeMetagenePlot.r " + sample + " " + region + " 6 0 100 " + ofile
-		print cmd
-		os.system(cmd)
 	
 def main():
 	samples = ["GRO_" + x + 'comb' for x in ["12C", "125", "123", "6C", "65", "63"]]
