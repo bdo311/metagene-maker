@@ -6,10 +6,9 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 **Table of Contents** 
 
 - [metagene-maker](#)
-	- [Simple start](#)
-	- [Example](#)
+	- [Installation](#)
+	- [Usage](#)
 	- [Dependencies](#)
-	- [Todo](#)
 	- [Making BED files](#)
 	- [Configuration file (see example.conf for an example)](#)
 		- [Bedgraph columns](#)
@@ -18,8 +17,9 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 		- [Parent directory](#)
 		- [Subfolders](#)
 		- [Contents of each sample folder](#)
+	- [Todo](#)
 
-Simple start
+Installation
 ----------
 
 1. Go to 'releases' above and download the latest tar.gz file. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
@@ -32,10 +32,24 @@ Simple start
 8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
 9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory.
 
-Example
--------
+Usage
+--------
 
-`metagene_maker config/test.txt M3_ChIP chip/`
+usage: `metagene_maker [-h] [-l binLength] [-p processors] config_file prefix output_directory`
+example: `metagene_maker -p 10 -l 500000 config/test.txt M3_ChIP chip/`
+
+positional arguments: | explanation
+--------------------|----------------------------
+  config_file    |   required configuration file
+  prefix         |   Prefix of output files
+  output_directory |  Directory where output folders will be written
+
+optional arguments: | explanation
+-------------------|-------------------------------------------
+  -h, --help      |  show this help message and exit
+  -l binLength    |  Bases per window when processing bedgraph. Default is 2,000,000.
+  -p processors   |  Number of cores to use. Default is 4.
+
 
 Dependencies
 --------
@@ -93,11 +107,11 @@ Configuration file (see example.conf for an example)
 
 **limitSize:** y if only regions >200bp and <200kb should be considered; n if no limitation
 
-**numBins:** number of bins. anywhere between 100 and 1000 is good
+**numBins:** number of bins. Use 1 to get the average coverage across the entire region. To make plots, anywhere between 100 and 500 is sufficient.
 
 **extendRegion:** y if regions in the bed file should be extended 1x upstream and downstream; n otherwise
 
-**sideExtension:** number of nt's to extend on each side of the provided regions.
+**sideExtension:** number of nt's to extend on each side of the provided regions. Default is 0.
 
 **sideNumBins:** number of bins to allocate for the side extensions (this number must be less than half of numBins
 
