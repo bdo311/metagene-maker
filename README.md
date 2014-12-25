@@ -3,6 +3,22 @@ metagene-maker
 
 Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
 
+**Table of Contents** 
+
+- [metagene-maker](#)
+	- [Simple start](#)
+	- [Example](#)
+	- [Dependencies](#)
+	- [Todo](#)
+	- [Making BED files](#)
+	- [Configuration file (see example.conf for an example)](#)
+		- [Bedgraph columns](#)
+		- [Region columns](#)
+	- [Directory structure](#)
+		- [Parent directory](#)
+		- [Subfolders](#)
+		- [Contents of each sample folder](#)
+
 Simple start
 ----------
 
@@ -67,20 +83,23 @@ Configuration file (see example.conf for an example)
 
 **stranded:** + if plus only, - if minus only, 0 if no strand information. IMPORTANT if your regions are also strand specific.
 
+**pairName:** If a bedgraph is stranded, it must be part of a pair of bedgraphs (one + and one -) that share the same pairName. 
+
 ### Region columns
+
 **regionType:** name of region
 
 **fileLoc:** absolute path to file specifying the regions of interest
-
-**header:** y if header, n if no header
-
-**stranded:** y if directional (i.e. TSS's), n if not directional (i.e. enhancers). IMPORTANT because some region profiles (like transcription start sites) have assymetrical shapes.
 
 **limitSize:** y if only regions >200bp and <200kb should be considered; n if no limitation
 
 **numBins:** number of bins. anywhere between 100 and 1000 is good
 
 **extendRegion:** y if regions in the bed file should be extended 1x upstream and downstream; n otherwise
+
+**sideExtension:** number of nt's to extend on each side of the provided regions.
+
+**sideNumBins:** number of bins to allocate for the side extensions (this number must be less than half of numBins
 
 Directory structure
 ------
