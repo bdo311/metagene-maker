@@ -1,7 +1,7 @@
 metagene-maker
 ==============
 
-Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
+Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Regions can be continuous or spliced. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, ATAC-seq, iCLIP, ribosome profiling, RNA-seq, and other NGS datasets.
 
 **Table of Contents** 
 
@@ -13,11 +13,10 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 	- [Configuration file (see example.conf for an example)](#)
 		- [Bedgraph columns](#)
 		- [Region columns](#)
-	- [Directory structure](#)
+	- [Output directory structure](#)
 		- [Parent directory](#)
 		- [Subfolders](#)
 		- [Contents of each sample folder](#)
-	- [Todo](#)
 
 Installation
 ----------
@@ -25,12 +24,12 @@ Installation
 1. Go to 'releases' above and download the latest tar.gz file. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
 2. Alternatively, you can clone this git repository using `git clone`.
 3. Go into the folder: `cd <metagene-maker-0.x>`
-4. Install: `sudo python setup.py install`
+4. Make sure you have the needed dependencies (below). Install: `sudo python setup.py install`
 5. Make config file (see below)
 6. Ensure that you have a bedgraph for every sample you want to analyze.
 7. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
 8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
-9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory.
+9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
 
 Usage
 --------
@@ -54,16 +53,10 @@ optional arguments: | explanation
 Dependencies
 --------
 
-1. Python (>2.7)
-2. Numpy (>=1.7)
-3. R (>2.14). Rscript should be callable from the command line
+1. Python (>=2.7) with Numpy (>=1.7)
+2. R (>=2.14). Rscript should be callable from the command line
 
 At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
-
-Todo
---------
-
-Report a histogram of region sizes for processed regions in region space (not chr space)
 
 Making BED files
 --------
@@ -85,7 +78,8 @@ You can supply your own BED6/12 files or use genome-wide BED files made using an
     - exonEnds 
     - score
     - name2
-4. Run `knownGenes <gene_file.txt> <output_prefix>`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
+4. Download the file.
+5. Run `knownGenes <gene_file.txt> <output_prefix>`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
 
 Configuration file (see example.conf for an example)
 --------
@@ -115,7 +109,7 @@ Configuration file (see example.conf for an example)
 
 **sideNumBins:** number of bins to allocate for the side extensions (this number must be less than half of numBins
 
-Directory structure
+Output directory structure
 ------
 
 ### Parent directory
