@@ -1,7 +1,7 @@
 metagene-maker
 ==============
 
-Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Regions can be continuous or spliced. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, ATAC-seq, iCLIP, ribosome profiling, RNA-seq, and other NGS datasets.
+Makes metagene plots for bedgraphs over given regions in bed files for any organism. Regions can be continuous or spliced. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, ATAC-seq, iCLIP, ribosome profiling, RNA-seq, and other NGS datasets.
 
 **Table of Contents** 
 
