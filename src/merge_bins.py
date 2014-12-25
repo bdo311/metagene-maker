@@ -17,7 +17,7 @@ def mergeChr(folder):
 	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 
 def folderWorker(start, end, folders, folderToGraph, regions):
-	script = os.path.join(os.path.dirname(__file__), "/makeMetagenePlot.r")
+	script = os.path.dirname(__file__) + "/rscript/makeMetagenePlot.r"
 	
 	for i in range(start, end):
 		try: folder = folders[i]

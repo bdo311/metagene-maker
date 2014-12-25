@@ -171,7 +171,7 @@ def processRegions(regions):
 	return regionToChrMap, regionToBedType
 
 
-def main():			
+def main():
 	# read config file
 	folders, regions = readConfigFile(config_file)
 	
