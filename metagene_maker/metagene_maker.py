@@ -171,17 +171,15 @@ def processRegions(regions):
 		numBins = int(info[2])
 		extendRegion = info[3]
 		sideExtension = int(info[4])
+		sideNumBins = int(info[5])
 
 		if sideExtension and extendRegion=='y': 
 			logger.info("Region %s cannot be extended two different ways. Exiting.", region)
 			exit()
 		if sideExtension:
-			if numBins % 4 != 0: 
-				logger.info("Number of bins in region %s (%d) must be a multiple of 4 when using fixed side extensions (column sideExtensions). Exiting.", region, numBins)
-				exit()
-			if sideExtension % (numBins/4) != 0: 
-				logger.info("Size of fixed extension in region %s (%d) must be a multiple of the number of bins (%d) divided by 4. Exiting.", region, sideExtension, numBins)
-				exit()
+			if sideNumBins >= numBins/2: 
+				logger.info("Number of bins for each side extension (%d) in region %s must be less than half the total number of bins (%d). Exiting.", sideNumBins, region, sideNumBins)
+
 		regionInfo = getChrToRegion(loc)
 		regionToChrMap[region] = regionInfo[0]
 		regionToBedType[region] = regionInfo[1]
