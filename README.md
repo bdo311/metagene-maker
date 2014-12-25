@@ -6,13 +6,13 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 Simple start
 ----------
 
-1. Go to 'releases' above and download the latest tar.gz file. Alternatively, you can clone this git repository using `git clone`.
-2. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
+1. Go to 'releases' above and download the latest tar.gz file. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
+2. Alternatively, you can clone this git repository using `git clone`.
 3. Go into the folder: `cd <metagene-maker-0.x>`
 4. Install: `sudo python setup.py install`
 5. Make config file (see below)
 6. Ensure that you have a bedgraph for every sample you want to analyze.
-7. Ensure that you have properly formatted BED6 files for every region for which you want to build average profiles.
+7. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
 8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
 9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory.
 
@@ -24,23 +24,38 @@ Example
 Dependencies
 --------
 
-Python (>2.7) and R (>2.14)
-Numpy (>=1.7)
-
-Rscript should be callable from the command line
+1. Python (>2.7)
+2. Numpy (>=1.7)
+3. R (>2.14). Rscript should be callable from the command line
 
 At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
 
 Todo
 --------
 
-Still doesn't work too well for stranded bedgraphs (i.e. GRO-seq data). Implementation is in progress.
-
-Want to make metagenes that concatenate previously made metagenes (i.e. promoter, CDS, TES). Currently implemented as part of R script but not part of package yet.
-
-Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
-
 Report a histogram of region sizes for processed regions in region space (not chr space)
+
+Making BED files
+--------
+
+You can supply your own BED6/12 files or use genome-wide BED files made using an included script, knownGenes.
+
+1. From UCSC Genome Browser, go to Table Browser and choose your favorite organism/assembly. Choose "Genes and Gene Predictions" in 'group' and one of the gene tracks (we recommend UCSC Genes, Ensembl, or RefSeq).
+2. Choose 'selected fields from primary and related tables' for 'output format'. 
+3. Columns MUST be in this format: 
+    - name
+    - chrom
+    - strand (+/-)
+    - txStart
+    - txEnd
+    - cdsStart
+    - cdsEnd
+    - exonCount
+    - exonStarts
+    - exonEnds 
+    - score
+    - name2
+4. Run `knownGenes <gene_file.txt> <output_prefix>`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
 
 Configuration file (see example.conf for an example)
 --------
