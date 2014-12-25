@@ -10,12 +10,11 @@ def mergeChrAndSort(folder):
 	os.chdir(folder)
 	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 	os.system("sort -rn -t $'\t' -k7,7 allchr.txt > allchr_sorted.txt")
-	os.system("rm -f allchr.txt")
 
-# def mergeChr(folder):
-	# os.chdir(folder)
-	# #logger.info(folder)	
-	# if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
+def mergeChr(folder):
+	os.chdir(folder)
+	#logger.info(folder)	
+	if len(glob.glob("chr*")) != 0: os.system("cat chr* > allchr.txt")
 
 def folderWorker(start, end, folders, folderToGraph, regions):
 	script = os.path.dirname(__file__) + "/rscript/makeMetagenePlot.r"
@@ -26,11 +25,11 @@ def folderWorker(start, end, folders, folderToGraph, regions):
 		binFolder = folderToGraph[folder][0]
 		for region in regions: 
 			os.chdir(binFolder + '/' + region + '/')
-			mergeChrAndSort(binFolder + '/' + region + '/')
+			mergeChr(binFolder + '/' + region + '/')
 
 			info = regions[region]
 			numBins = info[4]
-			rcmd = ' '.join(["Rscript", script, folder, region, "6", "3", numBins, "allchr_sorted.txt"])
+			rcmd = ' '.join(["Rscript", script, folder, region, "6", "3", numBins, "allchr.txt"])
 			logger.info('%s', rcmd)
 			os.system(rcmd)
 

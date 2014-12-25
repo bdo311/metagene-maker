@@ -11,7 +11,6 @@ import numpy as np
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
-from combinePlusMinus import *
 csv.register_dialect("textdialect", delimiter='\t')
 
 # parser
@@ -50,32 +49,12 @@ def readConfigFile(fn):
 	reader = csv.reader(ifile, 'textdialect')
 
 	# folders
-	# stranded bedgraphs must come in pairs. all pairs must have a plus and a minus
 	folders = {}
-	folderPairs = collections.defaultdict(lambda: ['', ''])
 	for row in reader:
 		if len(row)==0: continue
 		if 'regionType' in row[0]: break
 		if '#' in row[0] or row[0]=='': continue
 		folders[row[0]] = row[1:]
-		
-		strand = row[2]
-		if strand == '0': continue #unstranded
-		if len(row) <= 3 or row[3] == '':
-			logger.info("Bedgraph %s must be part of a pair because it is stranded. Exiting.", row[0])
-			exit()
-		if strand == '+': folderPairs[row[3]] = row[0]
-		else if strand == '-': folderPairs[row[3]] = row[1]
-		else:
-			logger.info("The strand for bedgraph %s must be '+' or '-' not %s. Exiting.", row[0], row[2])
-			exit()
-		
-	# make sure each pair has a + and a - bedgraph
-	for pairName in folderPairs:
-		pair = folderPairs[pairName]
-		if pair[0] == '' or pair[1] == '':
-			logger.info("Pair %s must have both a '+' and a '-' bedgraph. Exiting.", pairName)
-			exit()
 
 	# regions
 	regions = {}
@@ -84,7 +63,7 @@ def readConfigFile(fn):
 		if '#' in row[0] or row[0]=='': continue
 		regions[row[0]] = row[1:]
 
-	return folders, folderPairs, regions
+	return folders, regions
 
 def processFolders(parentDir, folders, regions):
 	folderToGraph = {}
@@ -194,7 +173,7 @@ def processRegions(regions):
 
 def main():
 	# read config file
-	folders, folderPairs, regions = readConfigFile(config_file)
+	folders, regions = readConfigFile(config_file)
 	
 	# processing folders and bedgraphs
 	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
@@ -227,13 +206,9 @@ def main():
 				procs.append(p)		
 			for proc in procs: proc.join()		
 
+	
 	# merging bins for each chromosome, then make metagene
 	logger.info("\nMaking metagenes")
-	
-	# combining stranded bedgraphs 
-	
-	# flip all (-)
-	
 	folders = folderToGraph.keys() 
 	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
 	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
