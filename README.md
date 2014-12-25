@@ -6,17 +6,26 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 Simple start
 ----------
 
-1. Clone project to new directory by executing `git clone https://github.com/bdo311/metagene-maker.git`. No need to install anything.
-2. Make config file (see below)
-3. Ensure that you have a bedgraph for every sample you want to analyze.
-4. Ensure that you have properly formatted BED6 files for every region for which you want to build average profiles.
-5. Run: `python metagene_maker.py <config file>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
-6. Output: tab delimited files for each region in a new `averages` folder in the user-provided parent directory
+1. Go to 'releases' above and download the latest tar.gz file. Alternatively, 
+2. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
+3. Go into the folder: `cd <metagene-maker-0.x>`
+4. Install: `sudo python setup.py install`
+5. Make config file (see below)
+6. Ensure that you have a bedgraph for every sample you want to analyze.
+7. Ensure that you have properly formatted BED6 files for every region for which you want to build average profiles.
+8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
+9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory.
+
+Example
+-------
+
+`metagene_maker config/test.txt M3_ChIP chip/`
 
 Dependencies
 --------
 
-Base Python (>2.7) and R (>3.0)
+Python (>2.7) and R (>2.14)
+Numpy (>=1.7)
 
 Rscript should be callable from the command line
 
@@ -33,20 +42,8 @@ Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown 
 
 Report a histogram of region sizes for processed regions in region space (not chr space)
 
-Parse blocks for multi exon regions in the input bed file and turn these into a new object that has a method that can map bin space onto chr space and vice versa (SNF working on currently)
-
-
 Configuration file (see example.conf for an example)
 --------
-
-### Parameters
-**name:** the name appended to all output files
-
-**parentDir:** the folder where all output subfolders will be located (see below for directory structure)
-
-**organism:** either hg19 or mm9 depending on organism
-
-**threads:** number of processors used
 
 ### Bedgraph columns
 **folder:** the name of the sample (should also be the name of the folder where sample-specific intermediate files will be made)
