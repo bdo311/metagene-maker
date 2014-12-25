@@ -6,7 +6,7 @@ Makes metagene plots for bedgraphs over given regions in bed files for human and
 Simple start
 ----------
 
-1. Go to 'releases' above and download the latest tar.gz file. Alternatively, 
+1. Go to 'releases' above and download the latest tar.gz file. Alternatively, you can clone this git repository using `git clone`.
 2. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
 3. Go into the folder: `cd <metagene-maker-0.x>`
 4. Install: `sudo python setup.py install`
