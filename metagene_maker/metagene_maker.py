@@ -236,8 +236,8 @@ def main():
 	for p in procs: p.join()
 	
 	# 6. combining stranded bedgraphs 
-	# todo: make this parallel (as in the case when we process 24 GROs)
 	logger.info("\nCombining stranded bedgraphs")
+	procs = []
 	for pair in folderPairs: #will be zero pairs if there are no stranded bedgraphs
 		dir1 = parentDir + "/" + pair + "_sense/"
 		dir2 = parentDir + "/" + pair + "_antisense/"
@@ -248,7 +248,10 @@ def main():
 		if not glob.glob("bins"): os.system("mkdir bins")
 		
 		# all regions will be broken up into sense and antisense. for non-stranded regions, treat as if it is (+)
-		processPaired(pair, folderPairs, regions, folderToGraph, parentDir)
+		p = multiprocessing.Process(target = processPaired, args = (pair, folderPairs, regions, folderToGraph, parentDir))
+		procs.append(p)
+		p.start()
+	for p in procs: p.join()
 		
 	# 7. remove original stranded bedgraph folders, and replace with sense/antisense	
 	newFolderToGraph = {}

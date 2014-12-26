@@ -44,7 +44,6 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 	minusParentDir = parentDir + '/' + minusSample + '/bins/'
 	
 	for region in regions: #we are guaranteed that the regions must be stranded, so they are either + or -
-		logger.info("\nSplitting %s %s", pair, region)
 		# split allchr into plus and minus
 		plusdir = plusParentDir + region + '/'
 		os.chdir(plusdir)
@@ -54,7 +53,6 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		os.system("gawk -F '\t' '{print >> \"allchr_\" $6 \".txt\"}' allchr_sorted.txt")
 			
 		# combine plus plus, minus minus for sense
-		logger.info("Making sense for %s %s", pair, region) 
 		opath = parentDir + "/" + pair + "_sense/bins/"
 		os.chdir(opath)
 		if not glob.glob(region): os.system("mkdir " + region)
@@ -64,7 +62,6 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
 		
 		# combine plus minus, minus plus for antisense
-		logger.info("Making antisense for %s %s", pair, region)
 		opath = parentDir + "/" + pair + "_antisense/bins/"
 		os.chdir(opath)
 		if not glob.glob(region): os.system("mkdir " + region)
@@ -72,7 +69,9 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		file1 = minusdir + "/allchr_+.txt"
 		file2 = plusdir + "/allchr_-.txt"
 		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
-		
+	
+	logger.info("Done making sense and antisense for %s", pair)
+	
 		
 		
 		
