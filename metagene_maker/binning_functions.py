@@ -117,9 +117,9 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 		if extension > 0:
 			coreBins = numBins - 2 * sideNumBins
 			
-			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
-			regionBins = blockGetBins(blocks, coreBins, readsForChrom, binLength)
-			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
+			leftSideBins = getBins(start - extension, start, sideNumBins, readsForChrom, binLength)
+			regionBins = getBins(start, end, coreBins, readsForChrom, binLength)
+			rightSideBins = getBins(end, end + extension, sideNumBins, readsForChrom, binLength)
 			
 			leftSideBins.extend(regionBins)
 			leftSideBins.extend(rightSideBins)
