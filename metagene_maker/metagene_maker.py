@@ -49,12 +49,32 @@ def readConfigFile(fn):
 	reader = csv.reader(ifile, 'textdialect')
 
 	# folders
+	# stranded bedgraphs must come in pairs. all pairs must have a plus and a minus
 	folders = {}
+	folderPairs = collections.defaultdict(lambda: ['', ''])
 	for row in reader:
 		if len(row)==0: continue
 		if 'regionType' in row[0]: break
 		if '#' in row[0] or row[0]=='': continue
 		folders[row[0]] = row[1:]
+		
+		strand = row[2]
+		if strand == '0': continue #unstranded
+		if len(row) <= 3 or row[3] == '':
+			logger.info("Bedgraph %s must be part of a pair because it is stranded. Exiting.", row[0])
+			exit()
+		if strand == '+': folderPairs[row[3]][0] = row[0]
+		elif strand == '-': folderPairs[row[3]][1] = row[0]
+		else:
+			logger.info("The strand for bedgraph %s must be '+' or '-' not %s. Exiting.", row[0], row[2])
+			exit()
+		
+	# make sure each pair has a + and a - bedgraph
+	for pairName in folderPairs:
+		pair = folderPairs[pairName]
+		if pair[0] == '' or pair[1] == '':
+			logger.info("Pair %s must have both a '+' and a '-' bedgraph. Exiting.", pairName)
+			exit()
 
 	# regions
 	regions = {}
@@ -63,7 +83,7 @@ def readConfigFile(fn):
 		if '#' in row[0] or row[0]=='': continue
 		regions[row[0]] = row[1:]
 
-	return folders, regions
+	return folders, folderPairs, regions
 
 def processFolders(parentDir, folders, regions):
 	folderToGraph = {}
@@ -111,6 +131,8 @@ def isBed(row):
 	try:
 		a,b=int(row[1]), int(row[2]) #start/end ok?
 		
+		if row[5] != '+' and row[5] != '-': return False #must have strand info
+		
 		if len(row)>11: 
 			if ',' not in row[10] or ',' not in row[11]: return False #BED12s must have commas
 			c,d =len(row[10].split(',')), len(row[11].split(',')) #number of blocks must be the same
@@ -118,17 +140,17 @@ def isBed(row):
 	except: return False
 	return True
 	
-def getChrToRegion(fn, header):
+def getChrToRegion(fn):
 	with open(fn, 'r') as ifile:	
 		regions = collections.defaultdict(lambda: []) # by chromosome
-		if header: ifile.next()
 		
 		counter = 0
 		for line in ifile:
 			counter += 1
 			row = line.split()
 			if not isBed(row):
-				logger.info("Line %d of file %s is not in BED format. Exiting.", counter, fn)
+				if counter == 1: continue #header
+				logger.info("Line %d of file %s is not in BED6/12 format. Exiting.", counter, fn)
 				exit()
 			regions[row[0]].append(row)
 			
@@ -144,24 +166,21 @@ def processRegions(regions):
 	for region in regions:
 		info = regions[region]
 		loc = info[0]
-		isHeader = True if info[1] == 'y' else False
 		
 		# check that number of bins and the extension size will be handled gracefully
-		numBins = int(info[4])
-		extendRegion = info[5]
-		sideExtension = int(info[6])
+		numBins = int(info[2])
+		extendRegion = info[3]
+		sideExtension = int(info[4])
+		sideNumBins = int(info[5])
 
 		if sideExtension and extendRegion=='y': 
 			logger.info("Region %s cannot be extended two different ways. Exiting.", region)
 			exit()
 		if sideExtension:
-			if numBins % 4 != 0: 
-				logger.info("Number of bins in region %s (%d) must be a multiple of 4 when using fixed side extensions (column sideExtensions). Exiting.", region, numBins)
-				exit()
-			if sideExtension % (numBins/4) != 0: 
-				logger.info("Size of fixed extension in region %s (%d) must be a multiple of the number of bins (%d) divided by 4. Exiting.", region, sideExtension, numBins)
-				exit()
-		regionInfo = getChrToRegion(loc, isHeader)
+			if sideNumBins >= numBins/2: 
+				logger.info("Number of bins for each side extension (%d) in region %s must be less than half the total number of bins (%d). Exiting.", sideNumBins, region, sideNumBins)
+
+		regionInfo = getChrToRegion(loc)
 		regionToChrMap[region] = regionInfo[0]
 		regionToBedType[region] = regionInfo[1]
 		if regionInfo[1] == 'BED12':
@@ -172,10 +191,10 @@ def processRegions(regions):
 
 
 def main():
-	# read config file
-	folders, regions = readConfigFile(config_file)
+	# 1. read config file
+	folders, folderPairs, regions = readConfigFile(config_file)
 	
-	# processing folders and bedgraphs
+	# 2. processing folders and bedgraphs
 	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
 	folderToGraph, allChroms = processFolders(parentDir, folders, regions)
 	allChroms = list(allChroms)
@@ -183,53 +202,95 @@ def main():
 	for f in folderToGraph:
 		logger.info('%s: %s', f, folderToGraph[f][0])
 	
-	# processing regions, checking that they are valid bed files
+	# 3. processing regions, checking that they are valid bed files
 	regionToChrMap, regionToBedType = processRegions(regions)
 	logger.info("\nProcessed regions: %s", ', '.join(regionToChrMap.keys()))
 	for r in regionToChrMap:
 		logger.info('%s: %s %s', r, regionToBedType[r], regions[r][0])
 
-	# making bins
-	logger.info("\nReading in bedgraphs and making profiles for each region")
-	
+	# 4. making bins
+	logger.info("\nReading in bedgraphs and making profiles for each region")	
 	for folder in folderToGraph:
-		# if my bedgraph is stranded and my regions are stranded, only 
-		# use the regions that correspond to the bedgraph strand
 		[binFolder, graphFolder, folderStrand] = folderToGraph[folder]
 		for i in range(len(allChroms)):
 			chroms = allChroms[(numProcs*i):(numProcs*(i+1))]
 			if chroms == []: break
 			procs=[]
 			for chrom in chroms:
-				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, folderStrand, binLength, regions, regionToChrMap, regionToBedType))
+				p = multiprocessing.Process(target=processEachChrom, args=(chrom, binFolder, graphFolder, binLength, regions, regionToChrMap, regionToBedType))
 				p.start()
 				procs.append(p)		
 			for proc in procs: proc.join()		
 
-	
-	# merging bins for each chromosome, then make metagene
-	logger.info("\nMaking metagenes")
+	# 5. making allchr_sorted.txt for each region for each dataset
+	logger.info("\nMaking metagenes")	
 	folders = folderToGraph.keys() 
 	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
 	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
 	procs = []
 
 	for i in range(numJobs): 
-		p = multiprocessing.Process(target=folderWorker, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
+		p = multiprocessing.Process(target=concatChrs, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
+		procs.append(p)
+		p.start()
+	for p in procs: p.join()
+	
+	# 6. combining stranded bedgraphs 
+	# todo: make this parallel (as in the case when we process 24 GROs)
+	logger.info("\nCombining stranded bedgraphs")
+	for pair in folderPairs: #will be zero pairs if there are no stranded bedgraphs
+		dir1 = parentDir + "/" + pair + "_sense/"
+		dir2 = parentDir + "/" + pair + "_antisense/"
+		if not glob.glob(dir1): os.system(" ".join(["mkdir", dir1, dir2]))
+		os.chdir(dir1)
+		if not glob.glob("bins"): os.system("mkdir bins")
+		os.chdir(dir2)
+		if not glob.glob("bins"): os.system("mkdir bins")
+		
+		# all regions will be broken up into sense and antisense. for non-stranded regions, treat as if it is (+)
+		processPaired(pair, folderPairs, regions, folderToGraph, parentDir)
+		
+	# 7. remove original stranded bedgraph folders, and replace with sense/antisense	
+	newFolderToGraph = {}
+	for folder in folderToGraph: # get non stranded
+		if folderToGraph[folder][2] == '0': newFolderToGraph[folder] = folderToGraph[folder]
+	for pair in folderPairs: #make new entries for new folders
+		name = pair + "_sense"
+		binFolder = parentDir + '/' + name + "/bins/"
+		graphFolder = parentDir + '/' + name + '/bins/'
+		strand = '+'
+		newFolderToGraph[name] = [binFolder, graphFolder, strand]
+		
+		name = pair + "_antisense"
+		binFolder = parentDir + '/' + name + "/bins/"
+		graphFolder = parentDir + '/' + name + '/bins/'
+		strand = '-'
+		newFolderToGraph[name] = [binFolder, graphFolder, strand]		
+	folderToGraph = newFolderToGraph
+	
+	# 8. running R to get metagenes	
+	folders = folderToGraph.keys() 
+	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
+	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
+	procs = []
+
+	for i in range(numJobs): 
+		p = multiprocessing.Process(target=runRScript, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
 		procs.append(p)
 		p.start()
 	for p in procs: p.join()
 
-	# merging all files, and writing average files
+	# 9. merging all files, and writing average files. all antisense folders should have negative tracks
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
 	for region in regions:
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
+			isMinus = (folderToGraph[folder][2] == '-')
 			os.chdir(binFolder + '/' + region + '/')
 			fn = "avgraw_" + folder + "_" + region 
-			regionToFolderAvgs[region][folder] = processFile(fn)
+			regionToFolderAvgs[region][folder] = processFile(fn, isMinus)
 		writeFile(name + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
 	logger.info("\nDone!\n")

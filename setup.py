@@ -2,18 +2,17 @@
 
 from setuptools import setup
 
-setup(name='metagene-maker',
-      version='0.1',
+setup(name='metagenemaker',
+      version='0.18',
       description='Obtain average profiles of NGS datasets over your favorite regions',
       
 	  install_requires = ['numpy>=1.7'],
 	  
-	  packages=['metagene_maker'],
-	  package_dir={'metagene_maker': 'src'},
+	  packages=['metagene_maker', 'knownGenes'],
+	  package_dir={'metagene_maker': 'metagene_maker', 'knownGenes': 'knownGenes'},
 	  package_data={'metagene_maker': ['rscript/*.r']},
 	  
-	  entry_points = {'console_scripts': ['metagene_maker = metagene_maker.metagene_maker:main']},
-	  zip_safe = False,
+	  entry_points = {'console_scripts': ['metagene_maker = metagene_maker.metagene_maker:main', 'knownGenes = knownGenes.knowngenes_to_transcript_regions:main']},
 	  
 	  author='Brian Do',
       author_email='bdo@stanford.edu',

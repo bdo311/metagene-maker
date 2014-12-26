@@ -1,46 +1,85 @@
 metagene-maker
 ==============
 
-Makes metagene plots for bedgraphs over given regions in bed files for human and mouse only. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, and other NGS datasets.
+Makes metagene plots for bedgraphs over given regions in bed files for any organism. Regions can be continuous or spliced. Useful in analysis of ChIRP-seq, ChIP-seq, GRO-seq, ATAC-seq, iCLIP, ribosome profiling, RNA-seq, and other NGS datasets.
 
-Simple start
+**Table of Contents** 
+
+- [metagene-maker](#)
+	- [Installation](#)
+	- [Usage](#)
+	- [Dependencies](#)
+	- [Making BED files](#)
+	- [Configuration file (see example.conf for an example)](#)
+		- [Bedgraph columns](#)
+		- [Region columns](#)
+	- [Output directory structure](#)
+		- [Parent directory](#)
+		- [Subfolders](#)
+		- [Contents of each sample folder](#)
+
+Installation
 ----------
 
-1. Go to 'releases' above and download the latest tar.gz file. Alternatively, you can clone this git repository using `git clone`.
-2. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
+1. Go to 'releases' above and download the latest tar.gz file. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
+2. Alternatively, you can clone this git repository using `git clone`.
 3. Go into the folder: `cd <metagene-maker-0.x>`
-4. Install: `sudo python setup.py install`
+4. Make sure you have the needed dependencies (below). Install: `sudo python setup.py install`
 5. Make config file (see below)
 6. Ensure that you have a bedgraph for every sample you want to analyze.
-7. Ensure that you have properly formatted BED6 files for every region for which you want to build average profiles.
+7. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
 8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
-9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory.
+9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
 
-Example
--------
+Usage
+--------
 
-`metagene_maker config/test.txt M3_ChIP chip/`
+usage: `metagene_maker [-h] [-l binLength] [-p processors] config_file prefix output_directory`
+example: `metagene_maker -p 10 -l 500000 config/test.txt M3_ChIP chip/`
+
+positional arguments: | explanation
+--------------------|----------------------------
+  config_file    |   required configuration file
+  prefix         |   Prefix of output files
+  output_directory |  Directory where output folders will be written
+
+optional arguments: | explanation
+-------------------|-------------------------------------------
+  -h, --help      |  show this help message and exit
+  -l binLength    |  Bases per window when processing bedgraph. Default is 2,000,000.
+  -p processors   |  Number of cores to use. Default is 4.
+
 
 Dependencies
 --------
 
-Python (>2.7) and R (>2.14)
-Numpy (>=1.7)
-
-Rscript should be callable from the command line
+1. Python (>=2.7) with Numpy (>=1.7)
+2. R (>=2.14). Rscript should be callable from the command line
 
 At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
 
-Todo
+Making BED files
 --------
 
-Still doesn't work too well for stranded bedgraphs (i.e. GRO-seq data). Implementation is in progress.
+You can supply your own BED6/12 files or use genome-wide BED files made using an included script, knownGenes.
 
-Want to make metagenes that concatenate previously made metagenes (i.e. promoter, CDS, TES). Currently implemented as part of R script but not part of package yet.
-
-Want to make metagenes for mRNAs (5'UTR, CDS, 3'UTR). Introns need to be thrown out.
-
-Report a histogram of region sizes for processed regions in region space (not chr space)
+1. From UCSC Genome Browser, go to Table Browser and choose your favorite organism/assembly. Choose "Genes and Gene Predictions" in 'group' and one of the gene tracks (we recommend UCSC Genes, Ensembl, or RefSeq).
+2. Choose 'selected fields from primary and related tables' for 'output format'. 
+3. Columns MUST be in this format: 
+    - name
+    - chrom
+    - strand (+/-)
+    - txStart
+    - txEnd
+    - cdsStart
+    - cdsEnd
+    - exonCount
+    - exonStarts
+    - exonEnds 
+    - score
+    - name2
+4. Download the file.
+5. Run `knownGenes <gene_file.txt> <output_prefix>`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
 
 Configuration file (see example.conf for an example)
 --------
@@ -52,22 +91,25 @@ Configuration file (see example.conf for an example)
 
 **stranded:** + if plus only, - if minus only, 0 if no strand information. IMPORTANT if your regions are also strand specific.
 
+**pairName:** If a bedgraph is stranded, it must be part of a pair of bedgraphs (one + and one -) that share the same pairName. 
+
 ### Region columns
+
 **regionType:** name of region
 
 **fileLoc:** absolute path to file specifying the regions of interest
 
-**header:** y if header, n if no header
-
-**stranded:** y if directional (i.e. TSS's), n if not directional (i.e. enhancers). IMPORTANT because some region profiles (like transcription start sites) have assymetrical shapes.
-
 **limitSize:** y if only regions >200bp and <200kb should be considered; n if no limitation
 
-**numBins:** number of bins. anywhere between 100 and 1000 is good
+**numBins:** number of bins. Use 1 to get the average coverage across the entire region. To make plots, anywhere between 100 and 500 is sufficient.
 
 **extendRegion:** y if regions in the bed file should be extended 1x upstream and downstream; n otherwise
 
-Directory structure
+**sideExtension:** number of nt's to extend on each side of the provided regions. Default is 0.
+
+**sideNumBins:** number of bins to allocate for the side extensions (this number must be less than half of numBins
+
+Output directory structure
 ------
 
 ### Parent directory
