@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='metagenemaker',
-      version='0.18',
+      version='0.2',
       description='Obtain average profiles of NGS datasets over your favorite regions',
       
 	  install_requires = ['numpy>=1.7'],
