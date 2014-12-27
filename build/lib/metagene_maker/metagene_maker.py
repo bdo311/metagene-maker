@@ -63,8 +63,8 @@ def readConfigFile(fn):
 		if len(row) <= 3 or row[3] == '':
 			logger.info("Bedgraph %s must be part of a pair because it is stranded. Exiting.", row[0])
 			exit()
-		if strand == '+': folderPairs[row[3]] = row[0]
-		elif strand == '-': folderPairs[row[3]] = row[1]
+		if strand == '+': folderPairs[row[3]][0] = row[0]
+		elif strand == '-': folderPairs[row[3]][1] = row[0]
 		else:
 			logger.info("The strand for bedgraph %s must be '+' or '-' not %s. Exiting.", row[0], row[2])
 			exit()
@@ -141,11 +141,13 @@ def isBed(row):
 	return True
 	
 def getChrToRegion(fn):
+	os.system("perl -p -i -e \"s/\r\n/\n/g\" " + fn) #replace newlines with the right newline
 	with open(fn, 'r') as ifile:	
 		regions = collections.defaultdict(lambda: []) # by chromosome
 		
 		counter = 0
 		for line in ifile:
+			print line
 			counter += 1
 			row = line.split()
 			if not isBed(row):
@@ -230,23 +232,28 @@ def main():
 	procs = []
 
 	for i in range(numJobs): 
-		p = multiprocessing.Process(target=concatChr, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
+		p = multiprocessing.Process(target=concatChrs, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
 		procs.append(p)
 		p.start()
 	for p in procs: p.join()
 	
 	# 6. combining stranded bedgraphs 
+	logger.info("\nCombining stranded bedgraphs")
+	procs = []
 	for pair in folderPairs: #will be zero pairs if there are no stranded bedgraphs
 		dir1 = parentDir + "/" + pair + "_sense/"
 		dir2 = parentDir + "/" + pair + "_antisense/"
-		os.system(" ".join(["mkdir", dir1, dir2]))
+		if not glob.glob(dir1): os.system(" ".join(["mkdir", dir1, dir2]))
 		os.chdir(dir1)
-		os.system("mkdir bins")
+		if not glob.glob("bins"): os.system("mkdir bins")
 		os.chdir(dir2)
-		os.system("mkdir bins")
+		if not glob.glob("bins"): os.system("mkdir bins")
 		
 		# all regions will be broken up into sense and antisense. for non-stranded regions, treat as if it is (+)
-		processPaired(pair, folderPairs, regions, folderToGraph, parentDir)
+		p = multiprocessing.Process(target = processPaired, args = (pair, folderPairs, regions, folderToGraph, parentDir))
+		procs.append(p)
+		p.start()
+	for p in procs: p.join()
 		
 	# 7. remove original stranded bedgraph folders, and replace with sense/antisense	
 	newFolderToGraph = {}
@@ -285,7 +292,7 @@ def main():
 	for region in regions:
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
-			isMinus = (folderGraph[folder][2] == '-')
+			isMinus = (folderToGraph[folder][2] == '-')
 			os.chdir(binFolder + '/' + region + '/')
 			fn = "avgraw_" + folder + "_" + region 
 			regionToFolderAvgs[region][folder] = processFile(fn, isMinus)

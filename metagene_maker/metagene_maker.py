@@ -141,11 +141,13 @@ def isBed(row):
 	return True
 	
 def getChrToRegion(fn):
+	os.system("perl -p -i -e \"s/\r\n/\n/g\" " + fn) #replace newlines with the right newline
 	with open(fn, 'r') as ifile:	
 		regions = collections.defaultdict(lambda: []) # by chromosome
 		
 		counter = 0
 		for line in ifile:
+			print line
 			counter += 1
 			row = line.split()
 			if not isBed(row):
