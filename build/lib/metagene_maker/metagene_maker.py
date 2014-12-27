@@ -23,7 +23,7 @@ parser.add_argument('-p', metavar='processors', type=int, help="Number of cores 
 args = parser.parse_args()
 config_file = args.config_file
 numProcs = args.p
-name = args.prefix
+prefix = args.prefix
 binLength = args.l
 parentDir = args.outputDir
 if parentDir[0] != '/': parentDir = os.getcwd() + '/' + parentDir
@@ -147,7 +147,6 @@ def getChrToRegion(fn):
 		
 		counter = 0
 		for line in ifile:
-			print line
 			counter += 1
 			row = line.split()
 			if not isBed(row):
@@ -260,17 +259,17 @@ def main():
 	for folder in folderToGraph: # get non stranded
 		if folderToGraph[folder][2] == '0': newFolderToGraph[folder] = folderToGraph[folder]
 	for pair in folderPairs: #make new entries for new folders
-		name = pair + "_sense"
-		binFolder = parentDir + '/' + name + "/bins/"
-		graphFolder = parentDir + '/' + name + '/bins/'
+		senseName = pair + "_sense"
+		binFolder = parentDir + '/' + senseName + "/bins/"
+		graphFolder = parentDir + '/' + senseName + '/bins/'
 		strand = '+'
-		newFolderToGraph[name] = [binFolder, graphFolder, strand]
+		newFolderToGraph[senseName] = [binFolder, graphFolder, strand]
 		
-		name = pair + "_antisense"
-		binFolder = parentDir + '/' + name + "/bins/"
-		graphFolder = parentDir + '/' + name + '/bins/'
+		asName = pair + "_antisense"
+		binFolder = parentDir + '/' + asName + "/bins/"
+		graphFolder = parentDir + '/' + asName + '/bins/'
 		strand = '-'
-		newFolderToGraph[name] = [binFolder, graphFolder, strand]		
+		newFolderToGraph[asName] = [binFolder, graphFolder, strand]		
 	folderToGraph = newFolderToGraph
 	
 	# 8. running R to get metagenes	
@@ -296,7 +295,7 @@ def main():
 			os.chdir(binFolder + '/' + region + '/')
 			fn = "avgraw_" + folder + "_" + region 
 			regionToFolderAvgs[region][folder] = processFile(fn, isMinus)
-		writeFile(name + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
+		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
 	logger.info("\nDone!\n")
 	
