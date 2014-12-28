@@ -88,7 +88,11 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	# make sure the length of scores is right
 	if len(scores) != numBins:
 		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
-		scores = np.interp(a, range(len(scores)), scores)
+		
+		try: scores = np.interp(a, range(len(scores)), scores)
+		except: 
+			print scores
+			exit()
 	assert len(scores)==numBins
 	return scores
 
@@ -117,9 +121,9 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 		if extension > 0:
 			coreBins = numBins - 2 * sideNumBins
 			
-			leftSideBins = getBins(start - extension, start, extBins, readsForChrom, binLength)
-			regionBins = blockGetBins(blocks, coreBins, readsForChrom, binLength)
-			rightSideBins = getBins(end, end + extension, extBins, readsForChrom, binLength)
+			leftSideBins = getBins(start - extension, start, sideNumBins, readsForChrom, binLength)
+			regionBins = getBins(start, end, coreBins, readsForChrom, binLength)
+			rightSideBins = getBins(end, end + extension, sideNumBins, readsForChrom, binLength)
 			
 			leftSideBins.extend(regionBins)
 			leftSideBins.extend(rightSideBins)

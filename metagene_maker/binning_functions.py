@@ -88,7 +88,11 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	# make sure the length of scores is right
 	if len(scores) != numBins:
 		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
-		scores = np.interp(a, range(len(scores)), scores)
+		
+		try: scores = np.interp(a, range(len(scores)), scores)
+		except: 
+			print scores
+			exit()
 	assert len(scores)==numBins
 	return scores
 
