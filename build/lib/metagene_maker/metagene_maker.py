@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2.7
 # metagene_maker.py
 # 8/29/14, last updated 12/23/14
 # makes metagenes for bedgraphs and regions according to a configuration file

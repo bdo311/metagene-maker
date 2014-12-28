@@ -69,7 +69,6 @@ def getInitialReadNumber(readsForChrom, binNum, currStart):
 # gets the array of bins for each gene
 # end of gene is NOT inclusive
 def getBins(start, end, numBins, readsForChrom, binLength):
-
 	# walking through each bin for the region
 	scores = []
 	binNum = start/binLength   
@@ -86,13 +85,12 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 		currStart = currEnd # new start of my window
 	
 	# make sure the length of scores is right
+	if len(scores) == 0: scores = [0] * numBins #if start > end (when calculating TR for genes < 300bp, scores will be empty, and we need to fix that or else interp won't work
 	if len(scores) != numBins:
 		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
 		
-		try: scores = np.interp(a, range(len(scores)), scores)
-		except: 
-			print scores
-			exit()
+		scores = np.interp(a, range(len(scores)), scores)
+		
 	assert len(scores)==numBins
 	return scores
 
@@ -216,6 +214,7 @@ def blockGetBins(blocks, numBins, readsForChrom, binLength):
 			currStart = blocks[blockNum][0] # start at the next bin
 		
 	# make sure the length of scores is right
+	if len(scores) == 0: scores = [0] * numBins #if start > end (when calculating TR for genes < 300bp, scores will be empty, and we need to fix that or else interp won't work
 	if len(scores) != numBins:
 		a=map(lambda x: float(x)*len(scores)/numBins, range(numBins)) # convert my desired scale to the current scale
 		scores = np.interp(a, range(len(scores)), scores)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2.7
 # metagene_maker.py
 # 8/29/14, last updated 12/23/14
 # makes metagenes for bedgraphs and regions according to a configuration file
@@ -105,7 +105,7 @@ def processFolders(parentDir, folders, regions):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		logger.info("\nSplitting up bedgraph for %s", folder)
+		logger.info("Splitting up bedgraph for %s", folder)
 		if not glob.glob("done"): 
 			os.system("rm -f *.bedGraph")
 			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
@@ -196,6 +196,7 @@ def main():
 	folders, folderPairs, regions = readConfigFile(config_file)
 	
 	# 2. processing folders and bedgraphs
+	logger.info("\nProcessing bedgraphs")
 	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
 	folderToGraph, allChroms = processFolders(parentDir, folders, regions)
 	allChroms = list(allChroms)
