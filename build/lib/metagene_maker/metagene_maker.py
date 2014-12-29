@@ -1,13 +1,9 @@
 #!/usr/bin/python2.7
 # metagene_maker.py
-# 8/29/14, last updated 12/23/14
+# 8/29/14, last updated 12/28/14
 # makes metagenes for bedgraphs and regions according to a configuration file
 
-# SNF TODO 
-# - to this point, report a histogram of region sizes for processed regions in region space (not chr space) 
-
 import os, glob, csv, re, collections, math, multiprocessing, sys, random, subprocess, logging, argparse
-import numpy as np
 from datetime import datetime
 from binning_functions import *
 from merge_bins import *
@@ -105,7 +101,7 @@ def processFolders(parentDir, folders, regions):
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
 		os.chdir("bedGraphByChr")
-		logger.info("\nSplitting up bedgraph for %s", folder)
+		logger.info("Splitting up bedgraph for %s", folder)
 		if not glob.glob("done"): 
 			os.system("rm -f *.bedGraph")
 			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
@@ -196,6 +192,7 @@ def main():
 	folders, folderPairs, regions = readConfigFile(config_file)
 	
 	# 2. processing folders and bedgraphs
+	logger.info("\nProcessing bedgraphs")
 	if not glob.glob(parentDir): os.system("mkdir " + parentDir)
 	folderToGraph, allChroms = processFolders(parentDir, folders, regions)
 	allChroms = list(allChroms)
@@ -272,19 +269,8 @@ def main():
 		newFolderToGraph[asName] = [binFolder, graphFolder, strand]		
 	folderToGraph = newFolderToGraph
 	
-	# 8. running R to get metagenes	
-	folders = folderToGraph.keys() 
-	numPerProc = len(folders)/numProcs + 1 if len(folders) > numProcs else 1
-	numJobs = numProcs if (numProcs < len(folders)) else len(folders)
-	procs = []
-
-	for i in range(numJobs): 
-		p = multiprocessing.Process(target=runRScript, args=(i * numPerProc, (i + 1) * numPerProc, folders, folderToGraph, regions))
-		procs.append(p)
-		p.start()
-	for p in procs: p.join()
-
-	# 9. merging all files, and writing average files. all antisense folders should have negative tracks
+	# 8. getting metagenes and writing average files. all antisense folders should have negative tracks
+	logger.info("\nWriting average files")
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
@@ -292,9 +278,9 @@ def main():
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
-			os.chdir(binFolder + '/' + region + '/')
-			fn = "avgraw_" + folder + "_" + region 
-			regionToFolderAvgs[region][folder] = processFile(fn, isMinus)
+			dir = binFolder + '/' + region + '/'
+			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus)
+		logger.info("%s_%s", prefix, region)
 		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
 	logger.info("\nDone!\n")

@@ -1,5 +1,5 @@
 # binning_functions.py
-# 8/29/14, last updated 12/23/14
+# 8/29/14, last updated 12/28/14
 # helper functions to make bins for each region
 
 import os, glob, csv, re, collections, math, multiprocessing, sys, time, logging
@@ -312,7 +312,7 @@ def processEachChrom(chrom, binFolder, graphFolder, binLength, regions, regionTo
 
 	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
 	readsForChrom = getReads(chrom, graphFolder + chrom + '.bedGraph', binLength)
-	logger.info('Read %s', chrom)
+	#logger.info('Read %s', chrom)
 	# processes regions
 	for region in regions:
 		info = regions[region]

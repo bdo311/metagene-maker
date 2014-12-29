@@ -1,8 +1,9 @@
 # merge_bins.py
-# 8/29/14
+# 8/29/14; last updated 12/28/14
 # merges bins into metagene for each region type for each bedgraph
 
 import os, glob, csv, re, multiprocessing, logging
+import pandas as pd
 
 logger = logging.getLogger('')
 
@@ -19,22 +20,12 @@ def concatChrs(start, end, folders, folderToGraph, regions):
 			os.system("sort -rn -t $'\t' -k7,7 allchr.txt > allchr_sorted.txt")
 			os.system("rm -f allchr.txt")
 
-# runs RScript on allchr_sorted.txt
-def runRScript(start, end, folders, folderToGraph, regions):
-	script = os.path.dirname(__file__) + "/rscript/makeMetagenePlot.r"
-	
-	for i in range(start, end):
-		try: folder = folders[i]
-		except: continue
-		binFolder = folderToGraph[folder][0]
-		for region in regions: 
-			os.chdir(binFolder + '/' + region + '/')
-
-			info = regions[region]
-			numBins = info[2]
-			rcmd = ' '.join(["Rscript", script, folder, region, "6", "3", numBins, "allchr_sorted.txt"])
-			logger.info('%s', rcmd)
-			os.system(rcmd)
+def getColumnMean(dir, isMinus):
+	a=pd.read_table(dir + "allchr_sorted.txt", header=None)
+	b=a[range(7,407)]
+	x=b.mean(axis=0)
+	if isMinus: return list(-x)
+	return list(x)
 
 # distill (+) and (-) into sense and antisense
 def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
@@ -75,26 +66,7 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		
 		
 		
-		
-			
-# take in an avg_*_* file and extract the bin values
-def processFile(fileName, isMinus):
-	avgFile = glob.glob(fileName + "*.txt")[0]
-	logger.info(avgFile)
-	ifile = open(avgFile, 'r')
-	reader = csv.reader(ifile, 'textdialect')
-
-	values = []
-	reader.next()
-	if isMinus:
-		for row in reader:
-			values.append(-float(row[1]))
-	else:
-		for row in reader:
-			values.append(row[1])
-
-	ifile.close()
-	return values
+	
 
 # write the mapping to a file
 def writeFile(name, mapping, direc):
