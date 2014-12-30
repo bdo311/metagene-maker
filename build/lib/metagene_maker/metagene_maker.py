@@ -275,11 +275,12 @@ def main():
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
 	for region in regions:
+		numBins = numBins = int(regions[region][2])
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
 			dir = binFolder + '/' + region + '/'
-			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus)
+			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus, numBins)
 		logger.info("%s_%s", prefix, region)
 		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
