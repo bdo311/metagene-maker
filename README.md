@@ -24,17 +24,19 @@ Installation
 1. Go to 'releases' above and download the latest tar.gz file. Unzip with `tar xvzf metagene-maker-0.x.tar.gz>`
 2. Alternatively, you can clone this git repository using `git clone`.
 3. Go into the folder: `cd <metagene-maker-0.x>`
-4. Make sure you have the needed dependencies (below). Install: `sudo python setup.py install`
-5. Make config file (see below)
-6. Ensure that you have a bedgraph for every sample you want to analyze.
-7. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
-8. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
-9. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
+4. Make sure you have the needed dependencies (below). Install: `sudo python setup.py install`. If you do not have sudo privileges, run `python setup.py install --user` or `python setup.py install --prefix=<desired directory>`. Be sure that the python you use to run `setup.py` is version 2.7; scripts WILL NOT WORK with lower versions (2.4, 2.5).
 
 Usage
---------
+-----
+1. Make config file (see below)
+2. Ensure that you have a bedgraph for every sample you want to analyze.
+3. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
+4. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
+5. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
+
 
 usage: `metagene_maker [-h] [-l binLength] [-p processors] config_file prefix output_directory`
+
 example: `metagene_maker -p 10 -l 500000 config/test.txt M3_ChIP chip/`
 
 positional arguments: | explanation
@@ -53,8 +55,9 @@ optional arguments: | explanation
 Dependencies
 --------
 
-1. Python (>=2.7) with Numpy (>=1.7)
-2. R (>=2.14). Rscript should be callable from the command line
+1. Python (>=2.7)
+2. Numpy (a python module) (>=1.7)
+3. Pandas (a python module) (>=0.14)
 
 At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirical rule: n cores * m GB bedgraph --> mn GB RAM needed)
 
