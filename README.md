@@ -30,7 +30,7 @@ Usage
 -----
 1. Make config file (see below)
 2. Ensure that you have a bedgraph for every sample you want to analyze.
-3. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `knownGenes` module (see below).
+3. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `extractTranscriptRegions` module (see below).
 4. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
 5. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
 
@@ -64,7 +64,12 @@ At least 4 GB RAM if your largest bedgraph is 1 GB and you use 4 cores (empirica
 Making BED files
 --------
 
-You can supply your own BED6/12 files or use genome-wide BED files made using an included script, knownGenes.
+You can supply your own BED6/12 files or use genome-wide BED files made using an included script, extractTranscriptRegions. You can start from either GTF files or files downloaded from UCSC as follows:
+
+### Instructions for GTF files (use --gtf flag):
+1. Download the GTF file into the desired directory.
+
+### Instructions for UCSC files (use --ucsc flag):
 
 1. From UCSC Genome Browser, go to Table Browser and choose your favorite organism/assembly. Choose "Genes and Gene Predictions" in 'group' and one of the gene tracks (we recommend UCSC Genes, Ensembl, or RefSeq).
 2. Choose 'selected fields from primary and related tables' for 'output format'. 
@@ -82,7 +87,10 @@ You can supply your own BED6/12 files or use genome-wide BED files made using an
     - score
     - name2
 4. Download the file.
-5. Run `knownGenes <gene_file.txt> <output_prefix>`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
+
+### Running the script
+
+Run `extractTranscriptRegions -i <gene_file.txt> -o <output_prefix> [--ucsc|--gtf]`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
 
 Configuration file (see example.conf for an example)
 --------
