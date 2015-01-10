@@ -100,10 +100,10 @@ def processFolders(parentDir, folders, regions):
 		os.chdir("..")
 		if not glob.glob("bedGraphByChr/"): os.system("mkdir bedGraphByChr")
 		
-		os.chdir("bedGraphByChr")
-		logger.info("Splitting up bedgraph for %s", folder)
+		os.chdir("bedGraphByChr")		
 		if not glob.glob("done"): 
 			os.system("rm -f *.bedGraph")
+			logger.info("Splitting up bedgraph for %s", folder)
 			cmd = "gawk '{print >> $1\".bedGraph\"}' " + folders[folder][0]
 			logger.info(cmd)
 			os.system(cmd)

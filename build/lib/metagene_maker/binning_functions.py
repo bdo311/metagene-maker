@@ -92,7 +92,7 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 		scores = np.interp(a, range(len(scores)), scores)
 		
 	assert len(scores)==numBins
-	return scores
+	return list(scores)
 
 # for each chromosome, get bins corresponding to each region in the chromosome
 def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, numBins, extendRegion, extension, sideNumBins, readsForChrom, binLength):
@@ -271,7 +271,7 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize
 			leftSideBins.extend(rightSideBins)
 			regionBins = leftSideBins
 		else: 
-			regionBins = blockGetBins(start, end, numBins, readsForChrom, binLength)
+			regionBins = blockGetBins(blocks, numBins, readsForChrom, binLength)
 			
 		strand = region[5]
 		if strand == '-': regionBins = regionBins[::-1] 
