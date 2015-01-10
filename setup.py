@@ -4,7 +4,7 @@ from setuptools import setup
 import sys, site, os
 
 setup(name='metagenemaker',
-      version='0.4.1',
+      version='0.4.2',
       description='Obtain average profiles of NGS datasets over your favorite regions',
       
 	  install_requires = ['numpy>=1.7', 'pandas>=0.14'],

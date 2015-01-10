@@ -335,7 +335,7 @@ def main():
 					# unique introns
 					if tuple(outputRow) in alreadyIntron: continue
 					alreadyIntron.add(tuple(outputRow))
-					outputRow.extend([geneIDInfo+ '__intron' + str(intronNum), strand])
+					outputRow.extend([geneIDInfo+ '__intron' + str(intronNum), 0, strand])
 					intronWriter.writerow(outputRow)
 					
 					# unique splice sites
