@@ -26,6 +26,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 			
+		#print read
 		readStart, readEnd, score = read[0], read[1], read[2]
 		#print 'read', readStart, readEnd, score
 
@@ -48,6 +49,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 
 		currStart = readEnd + 1
 
+	#print totalScore
 	return float(totalScore)/totalLength, readNumber, binNum
 
 def getInitialReadNumber(readsForChrom, binNum, currStart):
@@ -73,13 +75,15 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	scores = []
 	binNum = start/binLength   
 	currStart = start
-	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart) - 1
+	readNumber = getInitialReadNumber(readsForChrom, binNum, currStart)
+	if readNumber < 0: readNumber = 0
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 
 	while currStart < end:
 		currEnd = currStart + spacingPerBin # end of my window
 		if currEnd > end: currEnd = end # last bin can't go past TES
 		
+		#print currStart, currEnd, binNum, readNumber
 		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) #updates read number also
 		scores.append(score)
 		currStart = currEnd # new start of my window
@@ -294,14 +298,14 @@ def getReads(chrom, graph, binLength):
 		start, end, score = int(row[1]), int(row[2]), float(row[3])
 
 		# which bins does each interval go into?
-		binNum = start/binLength
-		bin1 = binNum
-		bin2 = bin1 - 1
-		
-		# result: bins are overlapping
+		bin1 = start/binLength
 		readsForChrom[bin1].append([start, end, score])
-		readsForChrom[bin2].append([start, end, score])
 
+		bin2 = end/binLength
+		while bin1 < bin2:
+			bin1 = bin1 + 1
+			readsForChrom[bin2].append([start, end, score])
+			
 	ifile.close()
 	return readsForChrom
 
@@ -312,6 +316,7 @@ def processEachChrom(chrom, binFolder, graphFolder, binLength, regions, regionTo
 
 	logger.info('%s %s', chrom, graphFolder + chrom + '.bedGraph')
 	readsForChrom = getReads(chrom, graphFolder + chrom + '.bedGraph', binLength)
+	#print readsForChrom
 	#logger.info('Read %s', chrom)
 	# processes regions
 	for region in regions:

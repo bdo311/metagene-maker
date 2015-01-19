@@ -264,13 +264,14 @@ def main():
 				# making BED6
 				for i in range(len(exons)):
 					exonNum = i + 1
+					exonNumInfo = str(exonNum) + 'of' + str(len(exons))
 					exon = exons[i]
 					outputRow = [chrom, exon[0], exon[1]]
 					
 					# unique
 					if tuple(outputRow) in already: continue
 					already.add(tuple(outputRow))            
-					outputRow.extend([geneIDInfo + '__exon' + str(exonNum), 0, strand])
+					outputRow.extend([geneIDInfo + '__exon__' + exonNumInfo, 0, strand])
 					writer.writerow(outputRow)
 				
 	uniqExons = args.output  + '_uniq_exons.bed'
@@ -329,13 +330,14 @@ def main():
 				# making BED6
 				for i in range(len(introns)):
 					intronNum = i + 1
+					intronNumInfo = str(intronNum) + 'of' + str(len(introns))
 					intron = introns[i]
 					outputRow = [chrom, intron[0], intron[1]]
 					
 					# unique introns
 					if tuple(outputRow) in alreadyIntron: continue
 					alreadyIntron.add(tuple(outputRow))
-					outputRow.extend([geneIDInfo+ '__intron' + str(intronNum), 0, strand])
+					outputRow.extend([geneIDInfo+ '__intron__' + intronNumInfo, 0, strand])
 					intronWriter.writerow(outputRow)
 					
 					# unique splice sites
@@ -347,11 +349,11 @@ def main():
 						fiveSS = [chrom, intron[1] - 1, intron[1]]
 					if tuple(fiveSS) not in already5:
 						already5.add(tuple(fiveSS))
-						fiveSS.extend([geneIDInfo + '__5ss' + str(intronNum), 0, strand])
+						fiveSS.extend([geneIDInfo + '__5ss__' + intronNumInfo, 0, strand])
 						fiveWriter.writerow(fiveSS)
 					if tuple(threeSS) not in already3:
 						already3.add(tuple(threeSS))
-						threeSS.extend([geneIDInfo+ '__3ss' + str(intronNum), 0, strand])
+						threeSS.extend([geneIDInfo+ '__3ss__' + intronNumInfo, 0, strand])
 						threeWriter.writerow(threeSS)
 
 	uniqIntrons = args.output  + '_uniq_introns.bed'
