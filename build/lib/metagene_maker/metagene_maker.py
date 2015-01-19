@@ -166,16 +166,16 @@ def processRegions(regions):
 		
 		# check that number of bins and the extension size will be handled gracefully
 		numBins = int(info[2])
-		extendRegion = info[3]
-		sideExtension = int(info[4])
-		sideNumBins = int(info[5])
+		sideExtension = int(info[3])
+		sideNumBins = int(info[4])
 
 		if sideExtension and extendRegion=='y': 
 			logger.info("Region %s cannot be extended two different ways. Exiting.", region)
 			exit()
-		if sideExtension:
-			if sideNumBins >= numBins/2: 
-				logger.info("Number of bins for each side extension (%d) in region %s must be less than half the total number of bins (%d). Exiting.", sideNumBins, region, sideNumBins)
+		if sideExtension == 0 and sideNumBins > 0: 
+			logger.info("Warning: since sideExtension is 0 nt for region %s, no bins will be allocated for side extensions.", region)
+		if sideExtension > 0 and sideNumBins == 0:
+			logger.info("Warning: since sideNumBins is 0 bins for region %s, no bins will be alloccated for side extensions.", region)
 
 		regionInfo = getChrToRegion(loc)
 		regionToChrMap[region] = regionInfo[0]

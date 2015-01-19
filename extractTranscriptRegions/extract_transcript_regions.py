@@ -371,15 +371,15 @@ def main():
 	uniq3 = args.output  + '_uniq_noncoding3ss.bed'
 	getUniqIntronsAndSS(uniqIntrons, uniq5, uniq3, noncodingIntronFName)
 
-	# 5. unique TSS/TES
-	print "Getting unique TSS and TES"
-	def getUniqTSSAndTES(tssFN, tesFN, cdsFN):
-		with open(tssFN, 'w') as uniqTSS, open(tesFN, 'w') as uniqTES, open(cdsFN, 'r') as cds:
-			alreadyTSS = set()
-			alreadyTES = set()
+	# 5. unique cdsStart, cdsEnd
+	print "Getting unique cdsStart and cdsEnd"
+	def getUniqCDSStartEnd(startFN, endFN, cdsFN):
+		with open(startFN, 'w') as uniqStart, open(endFN, 'w') as uniqEnd, open(cdsFN, 'r') as cds:
+			alreadyStart = set()
+			alreadyEnd = set()
 			reader = csv.reader(cds, 'textdialect')
-			tssWriter = csv.writer(uniqTSS, 'textdialect')
-			tesWriter = csv.writer(uniqTES, 'textdialect')
+			startWriter = csv.writer(uniqStart, 'textdialect')
+			endWriter = csv.writer(uniqEnd, 'textdialect')
 			for row in reader:
 				geneIDInfo = row[3]
 				id = geneIDInfo.split('__')[0]
@@ -399,20 +399,80 @@ def main():
 				else:
 					startRow = [chrom, end - 1, end]
 					endRow = [chrom, start, start + 1]
+				if tuple(startRow) not in alreadyStart:
+					alreadyStart.add(tuple(startRow))
+					startRow.extend([geneIDInfo, 0, strand])
+					startWriter.writerow(startRow)
+				if tuple(endRow) not in alreadyEnd:
+					alreadyEnd.add(tuple(endRow))
+					endRow.extend([geneIDInfo, 0, strand])
+					endWriter.writerow(endRow)            
+				
+	uniqCDSStart = args.output  + '_uniq_cdsStart.bed'
+	uniqCDSEnd = args.output  + '_uniq_cdsEnd.bed'
+	getUniqCDSStartEnd(uniqCDSStart, uniqCDSEnd, cdsFName)
+
+
+	# 6. unique TSS, TES
+	print "Getting unique TSS and TES"
+	def getUniqTSSAndTES(tssFN, tesFN, fiveFN, threeFN):
+		with open(tssFN, 'w') as uniqTSS, open(tesFN, 'w') as uniqTES, open(fiveFN, 'r') as fiveUTR, open(threeFN, 'r') as threeUTR:
+			alreadyTSS = set()
+			fiveReader = csv.reader(fiveUTR, 'textdialect')
+			tssWriter = csv.writer(uniqTSS, 'textdialect')
+			for row in fiveReader:
+				geneIDInfo = row[3]
+				id = geneIDInfo.split('__')[0]
+				try: geneName = idToName[id]
+				except: geneName = id
+				if geneName != id: geneIDInfo = id + '__' + geneName
+				else: geneIDInfo = id
+				
+				# chrom, start, stop, strand
+				chrom = row[0]
+				strand = row[5]
+				start, end = int(row[1]), int(row[2])
+				
+				if strand == '+':
+					startRow = [chrom, start, start + 1]
+				else:
+					startRow = [chrom, end - 1, end]
 				if tuple(startRow) not in alreadyTSS:
 					alreadyTSS.add(tuple(startRow))
 					startRow.extend([geneIDInfo, 0, strand])
-					tssWriter.writerow(startRow)
-				if tuple(endRow) not in alreadyTSS:
+					tssWriter.writerow(startRow)      
+					
+			alreadyTES = set()
+			threeReader = csv.reader(threeUTR, 'textdialect')
+			tesWriter = csv.writer(uniqTES, 'textdialect')
+			for row in threeReader:
+				geneIDInfo = row[3]
+				id = geneIDInfo.split('__')[0]
+				try: geneName = idToName[id]
+				except: geneName = id
+				if geneName != id: geneIDInfo = id + '__' + geneName
+				else: geneIDInfo = id
+				
+				# chrom, start, stop, strand
+				chrom = row[0]
+				strand = row[5]
+				start, end = int(row[1]), int(row[2])
+				
+				if strand == '-':
+					endRow = [chrom, start, start + 1]
+				else:
+					endRow = [chrom, end - 1, end]
+				if tuple(endRow) not in alreadyTES:
 					alreadyTES.add(tuple(endRow))
 					endRow.extend([geneIDInfo, 0, strand])
-					tesWriter.writerow(endRow)            
-				
+					tesWriter.writerow(endRow)     
+					
+					
 	uniqTSS = args.output  + '_uniq_tss.bed'
 	uniqTES = args.output  + '_uniq_tes.bed'
-	getUniqTSSAndTES(uniqTSS, uniqTES, cdsFName)
 
-
+	getUniqTSSAndTES(uniqTSS, uniqTES, utr5FName, utr3FName)
+			
 	# sort everything
 	print "Sorting BED files"
 	for fn in glob.glob("*.bed"):
