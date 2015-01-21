@@ -8,11 +8,13 @@ from datetime import datetime
 
 logger = logging.getLogger('')
 
+debug = False
+
 # gets the average score within this bin
 # end of bin is NOT inclusive, because end of read in bedgraph is also NOT inclusive
 def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 	totalLength = currEnd - currStart
-	#print currStart, currEnd
+	if debug: print currStart, currEnd
 	totalScore = 0
 	readNumber = rn 			# which read to start at
 
@@ -27,7 +29,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 			
-		#print read, binNum, readNumber
+		if debug: print read, binNum, readNumber
 		readStart, readEnd, score = read[0], read[1], read[2]
 		#print 'read', readStart, readEnd, score
 
@@ -48,9 +50,9 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 			#print 'totalScore', totalScore, readEnd - currStart + 1
 			readNumber += 1 	# advance read number because this read won't be needed anymore
 
-		currStart = readEnd 
+		currStart = readEnd
 
-	#print currStart, currEnd, totalScore, totalLength
+	if debug: print currStart, currEnd, totalScore, totalLength
 	return float(totalScore)/totalLength, readNumber, binNum
 
 def getInitialReadNumber(readsForChrom, binNum, currStart):
@@ -80,13 +82,14 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	if readNumber < 0: readNumber = 0
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 
-	#counter = 0
+	if debug: counter = 0
 	while currStart < end:
 		currEnd = currStart + spacingPerBin # end of my window
 		if currEnd > end: currEnd = end # last bin can't go past TES
 		
-		#counter += 1
-		#print '===', counter, currStart, currEnd, binNum, readNumber
+		if debug:
+			counter += 1
+			print '===', counter, currStart, currEnd, binNum, readNumber
 		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) #updates read number also
 		scores.append(score)
 		currStart = currEnd # new start of my window
@@ -110,7 +113,8 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 	for region in chrToIndivRegions[chrom]:
 		start = int(region[1])
 		end = int(region[2])
-		#if region[3] != 'ENST00000328046__ENSG00000174010__3ss__1of3': continue
+		if debug: 
+			if region[3] != 'GAS5': continue
 
 		# binning doesn't really make sense here so just ignore
 		if limitSize:
@@ -139,7 +143,8 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 		outputRow.append(sum(regionBins)) 
 		outputRow.extend(regionBins)
 		writer.writerow(outputRow)
-		#if region[3] == 'ENST00000328046__ENSG00000174010__3ss__1of3': break
+		if debug:
+			if region[3] == 'GAS5': break
 
 		
 	ofile.close()
