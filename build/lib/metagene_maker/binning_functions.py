@@ -12,6 +12,7 @@ logger = logging.getLogger('')
 # end of bin is NOT inclusive, because end of read in bedgraph is also NOT inclusive
 def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 	totalLength = currEnd - currStart
+	#print currStart, currEnd
 	totalScore = 0
 	readNumber = rn 			# which read to start at
 
@@ -26,7 +27,7 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 			readList = readsForChrom[binNum]
 			read = readList[readNumber]
 			
-		#print read
+		#print read, binNum, readNumber
 		readStart, readEnd, score = read[0], read[1], read[2]
 		#print 'read', readStart, readEnd, score
 
@@ -47,9 +48,9 @@ def getAverageScore(readsForChrom, currStart, currEnd, binNum, rn):
 			#print 'totalScore', totalScore, readEnd - currStart + 1
 			readNumber += 1 	# advance read number because this read won't be needed anymore
 
-		currStart = readEnd + 1
+		currStart = readEnd 
 
-	#print totalScore
+	#print currStart, currEnd, totalScore, totalLength
 	return float(totalScore)/totalLength, readNumber, binNum
 
 def getInitialReadNumber(readsForChrom, binNum, currStart):
@@ -79,11 +80,13 @@ def getBins(start, end, numBins, readsForChrom, binLength):
 	if readNumber < 0: readNumber = 0
 	spacingPerBin = int(math.ceil((end - start)/float(numBins)))
 
+	#counter = 0
 	while currStart < end:
 		currEnd = currStart + spacingPerBin # end of my window
 		if currEnd > end: currEnd = end # last bin can't go past TES
 		
-		#print currStart, currEnd, binNum, readNumber
+		#counter += 1
+		#print '===', counter, currStart, currEnd, binNum, readNumber
 		score, readNumber, binNum = getAverageScore(readsForChrom, currStart, currEnd, binNum, readNumber) #updates read number also
 		scores.append(score)
 		currStart = currEnd # new start of my window
@@ -103,10 +106,12 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
+	#print regionType, numBins, extension, sideNumBins
 	for region in chrToIndivRegions[chrom]:
 		start = int(region[1])
 		end = int(region[2])
-		
+		#if region[3] != 'ENST00000328046__ENSG00000174010__3ss__1of3': continue
+
 		# binning doesn't really make sense here so just ignore
 		if limitSize:
 			if end - start < 200 or end - start > 200000: continue 
@@ -123,7 +128,10 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 		else: 
 			regionBins = getBins(start, end, numBins, readsForChrom, binLength)
 			
-	
+		if extension == 0: sideNumBins = 0
+		assert len(regionBins) == numBins + 2*sideNumBins
+		#print len(regionBins), numBins + 2*sideNumBins
+		
 		strand = region[5]
 		if strand == '-': regionBins = regionBins[::-1] 
 
@@ -131,7 +139,9 @@ def regionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize, num
 		outputRow.append(sum(regionBins)) 
 		outputRow.extend(regionBins)
 		writer.writerow(outputRow)
+		#if region[3] == 'ENST00000328046__ENSG00000174010__3ss__1of3': break
 
+		
 	ofile.close()
 	
 
@@ -220,6 +230,7 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize
 	ofile = open(binFolder + "/" + regionType + "/" + chrom + ".txt", 'w')
 	writer = csv.writer(ofile, 'textdialect')
 
+	#print regionType, numBins, extension, sideNumBins
 	for region in chrToIndivRegions[chrom]:
 	
 		# get info for each region
@@ -264,6 +275,9 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize
 			regionBins = leftSideBins
 		else: 
 			regionBins = blockGetBins(blocks, numBins, readsForChrom, binLength)
+					
+		if extension == 0: sideNumBins = 0
+		assert len(regionBins) == numBins + 2*sideNumBins
 			
 		strand = region[5]
 		if strand == '-': regionBins = regionBins[::-1] 

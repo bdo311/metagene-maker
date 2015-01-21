@@ -169,9 +169,6 @@ def processRegions(regions):
 		sideExtension = int(info[3])
 		sideNumBins = int(info[4])
 
-		if sideExtension and extendRegion=='y': 
-			logger.info("Region %s cannot be extended two different ways. Exiting.", region)
-			exit()
 		if sideExtension == 0 and sideNumBins > 0: 
 			logger.info("Warning: since sideExtension is 0 nt for region %s, no bins will be allocated for side extensions.", region)
 		if sideExtension > 0 and sideNumBins == 0:
@@ -180,10 +177,7 @@ def processRegions(regions):
 		regionInfo = getChrToRegion(loc)
 		regionToChrMap[region] = regionInfo[0]
 		regionToBedType[region] = regionInfo[1]
-		if regionInfo[1] == 'BED12':
-			if extendRegion == 'y': 
-				logger.info("Spliced regions in %s cannot be extended using extendRegion. Exiting.", region)
-				exit()
+
 	return regionToChrMap, regionToBedType
 
 
@@ -275,12 +269,18 @@ def main():
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
 	for region in regions:
-		numBins = numBins = int(regions[region][2])
+		numBins = int(regions[region][2])
+		extension = int(regions[region][3])
+		extBins = int(regions[region][4])
+		
+		if extension > 0: totalBins = numBins + 2 * extBins
+		else: totalBins = numBins
+		
 		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
 			dir = binFolder + '/' + region + '/'
-			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus, numBins)
+			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus, totalBins)
 		logger.info("%s_%s", prefix, region)
 		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
