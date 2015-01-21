@@ -112,13 +112,11 @@ Configuration file (see example.conf for an example)
 
 **limitSize:** y if only regions >200bp and <200kb should be considered; n if no limitation
 
-**numBins:** number of bins. Use 1 to get the average coverage across the entire region. To make plots, anywhere between 100 and 500 is sufficient.
-
-**extendRegion:** y if regions in the bed file should be extended 1x upstream and downstream; n otherwise
+**numBins:** number of bins for the central region. Use 1 to get the average coverage across the entire region. To make plots, anywhere between 100 and 500 is sufficient.
 
 **sideExtension:** number of nt's to extend on each side of the provided regions. Default is 0.
 
-**sideNumBins:** number of bins to allocate for the side extensions (this number must be less than half of numBins
+**sideNumBins:** number of bins for each of the side extensions
 
 Output directory structure
 ------
