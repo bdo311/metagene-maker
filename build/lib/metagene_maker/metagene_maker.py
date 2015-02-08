@@ -137,7 +137,9 @@ def isBed(row):
 	return True
 	
 def getChrToRegion(fn):
-	os.system("perl -p -i -e \"s/\r\n/\n/g\" " + fn) #replace newlines with the right newline
+	if '\r\n' in open(fn).read():
+		os.system("perl -p -i -e \"s/\r\n/\n/g\" " + fn) #replace newlines with the right newline
+		
 	with open(fn, 'r') as ifile:	
 		regions = collections.defaultdict(lambda: []) # by chromosome
 		
@@ -268,7 +270,9 @@ def main():
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
-	for region in regions:
+	sortedRegions = regions.keys()
+	sortedRegions.sort()
+	for region in sortedRegions:
 		numBins = int(regions[region][2])
 		extension = int(regions[region][3])
 		extBins = int(regions[region][4])
@@ -280,7 +284,7 @@ def main():
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
 			dir = binFolder + '/' + region + '/'
-			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus, totalBins)
+			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus)
 		logger.info("%s_%s", prefix, region)
 		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 

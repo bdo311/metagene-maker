@@ -20,9 +20,9 @@ def concatChrs(start, end, folders, folderToGraph, regions):
 			os.system("sort -rn -t $'\t' -k7,7 allchr.txt > allchr_sorted.txt")
 			os.system("rm -f allchr.txt")
 
-def getColumnMean(dir, isMinus, numBins):
+def getColumnMean(dir, isMinus):
 	a=pd.read_table(dir + "allchr_sorted.txt", header=None)
-	b=a[range(7,7 + numBins)]
+	b=a[range(7,len(a.columns))]
 	x=b.mean(axis=0)
 	if isMinus: return list(-x)
 	return list(x)
