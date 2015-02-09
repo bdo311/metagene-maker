@@ -135,10 +135,10 @@ def main():
 	logger.info("\nWriting average files")
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
-	sortedRegions = regions.keys()
-	sortedRegions.sort()
-	for region in sortedRegions:
-		for folder in folders:
+	sortedFolders = folders.keys()
+	sortedFolders.sort()
+	for region in regions:
+		for folder in sortedFolders:
 			binFolder = folders[folder][0] + '/bins/'
 			isMinus = (folders[folder][1] == '-')
 			dir = binFolder + '/' + region + '/'
