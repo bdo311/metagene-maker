@@ -270,8 +270,7 @@ def main():
 	regionToFolderAvgs = collections.defaultdict(lambda: {})
 	os.chdir(parentDir)
 	if not glob.glob("averages"): os.system("mkdir averages")
-	sortedFolders = folderToGraph.keys()
-	sortedFolders.sort()
+
 	for region in regions:
 		numBins = int(regions[region][2])
 		extension = int(regions[region][3])
@@ -280,7 +279,7 @@ def main():
 		if extension > 0: totalBins = numBins + 2 * extBins
 		else: totalBins = numBins
 		
-		for folder in sortedFolders:
+		for folder in folderToGraph:
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
 			dir = binFolder + '/' + region + '/'

@@ -38,9 +38,11 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		# split allchr into plus and minus
 		plusdir = plusParentDir + region + '/'
 		os.chdir(plusdir)
+		os.system("rm -f allchr_+.txt allchr_-.txt")
 		os.system("gawk -F '\t' '{print >> \"allchr_\" $6 \".txt\"}' allchr_sorted.txt")
 		minusdir = minusParentDir + region + '/'
 		os.chdir(minusdir)
+		os.system("rm -f allchr_+.txt allchr_-.txt")
 		os.system("gawk -F '\t' '{print >> \"allchr_\" $6 \".txt\"}' allchr_sorted.txt")
 			
 		# combine plus plus, minus minus for sense
@@ -74,7 +76,9 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 def writeFile(name, mapping, direc):
 	ofile = open(direc + name + '.txt', 'w')
 	writer = csv.writer(ofile, 'textdialect')
-	for treatment in mapping:
+	sortedTreatments = mapping.keys()
+	sortedTreatments.sort()
+	for treatment in sortedTreatments:
 		outputRow = [treatment]
 		outputRow.extend(mapping[treatment])
 		writer.writerow(outputRow)
