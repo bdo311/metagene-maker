@@ -53,7 +53,8 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		file1 = plusdir + "/allchr_+.txt"
 		file2 = minusdir + "/allchr_-.txt"
 		os.system("rm -f allchr_sorted.txt")
-		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
+		if glob.glob(file2): os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
+		else: os.system("cat " + file1 + " > " + "allchr_sorted.txt")
 		
 		# combine plus minus, minus plus for antisense
 		opath = parentDir + "/" + pair + "_antisense/bins/"
@@ -63,8 +64,9 @@ def processPaired(pair, folderPairs, regions, folderToGraph, parentDir):
 		file1 = minusdir + "/allchr_+.txt"
 		file2 = plusdir + "/allchr_-.txt"
 		os.system("rm -f allchr_sorted.txt")
-		os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
-	
+		if glob.glob(file2): os.system("cat " + file1 + " " + file2 + " > " + "allchr_sorted.txt")
+		else: os.system("cat " + file1 + " > " + "allchr_sorted.txt")
+		
 	logger.info("Done making sense and antisense for %s", pair)
 	
 		

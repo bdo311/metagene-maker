@@ -147,6 +147,7 @@ def getChrToRegion(fn):
 		for line in ifile:
 			counter += 1
 			row = line.split()
+			#print row
 			if not isBed(row):
 				if counter == 1: continue #header
 				logger.info("Line %d of file %s is not in BED6/12 format. Exiting.", counter, fn)
