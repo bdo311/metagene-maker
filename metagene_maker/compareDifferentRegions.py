@@ -24,7 +24,9 @@ def readConfig(fn):
 			
 		for row in reader:
 			if len(row)==0 or '#' in row[0]: continue
+			if row[0]=='': continue
 			try:
+				print row
 				a,b=int(row[1]),int(row[2])
 				regions[row[0]] = [a,b]
 			except:
