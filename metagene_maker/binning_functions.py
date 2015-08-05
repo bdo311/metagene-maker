@@ -297,23 +297,22 @@ def blockRegionWorker(binFolder, regionType, chrom, chrToIndivRegions, limitSize
 	
 #Loading reads for each bedgraph, for each chromosome
 def getReads(chrom, graph, binLength):
-	ifile = open(graph, 'r')
-	reader = csv.reader(ifile, 'textdialect')
 	readsForChrom = collections.defaultdict(lambda: [])
 
-	for row in reader:		
-		start, end, score = int(row[1]), int(row[2]), float(row[3])
+	with open(graph, 'r') as ifile:
+		for line in ifile:
+			row = line.rstrip().split()
+			start, end, score = int(row[1]), int(row[2]), float(row[3])
 
-		# which bins does each interval go into?
-		bin1 = start/binLength
-		readsForChrom[bin1].append([start, end, score])
+			# which bins does each interval go into?
+			bin1 = start/binLength
+			readsForChrom[bin1].append([start, end, score])
 
-		bin2 = end/binLength
-		while bin1 < bin2:
-			bin1 = bin1 + 1
-			readsForChrom[bin2].append([start, end, score])
-			
-	ifile.close()
+			bin2 = end/binLength
+			while bin1 < bin2:
+				bin1 = bin1 + 1
+				readsForChrom[bin2].append([start, end, score])
+
 	return readsForChrom
 
 # reads bedgraph and does region processing for each chromosome
