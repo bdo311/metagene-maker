@@ -63,7 +63,7 @@ def getSortedValues(sample, region, config):
 	return keys, sortedValues	
 	
 	
-def regionWorker(start, end, regionNames, regions, samples):
+def regionWorker(start, end, regionNames, regions, samples, suffix):
 	for region in regionNames[start:end]:
 		print "Processing " + region
 		regionToSamples = {}
@@ -72,7 +72,7 @@ def regionWorker(start, end, regionNames, regions, samples):
 			keys, regionToSamples[sample] = getSortedValues(sample, region, regions[region])
 			
 		
-		ofile = open("regionLists/" + region + "_list.txt",'w')
+		ofile = open("regionLists/" + region + "_list_" + suffix + ".txt",'w')
 		writer = csv.writer(ofile, 'textdialect')
 		header = ['regionName']
 		header.extend(sorted(regionToSamples.keys()))
@@ -86,7 +86,12 @@ def regionWorker(start, end, regionNames, regions, samples):
 		ofile.close()
 		
 def main():
+	if len(sys.argv) != 3:
+		print "Usage: compareDifferentRegions <config file> <suffix>"
+		exit()
+		
 	configFile = sys.argv[1]
+	suffix = sys.argv[2]
 	samples, regions = readConfig(configFile)
 	if not glob.glob("regionLists/"): os.system("mkdir regionLists")
 	
@@ -97,15 +102,10 @@ def main():
 	
 	regionNames = regions.keys()
 	for i in range(numJobs): 
-		p = multiprocessing.Process(target=regionWorker, args=(i * numPerProc, (i + 1) * numPerProc, regionNames, regions, samples))
+		p = multiprocessing.Process(target=regionWorker, args=(i * numPerProc, (i + 1) * numPerProc, regionNames, regions, samples, suffix))
 		procs.append(p)
 		p.start()
 	for p in procs: p.join()
-
-
-		
-			
-
 
 if __name__=='__main__':
 	main()
