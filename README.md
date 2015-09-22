@@ -31,7 +31,7 @@ Usage
 1. Make config file (see below)
 2. Ensure that you have a bedgraph for every sample you want to analyze.
 3. Ensure that you have properly formatted BED6/12 files for every region for which you want to build average profiles. You can make these with the included `extractTranscriptRegions` module (see below).
-4. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
+4. Run: `metagene_maker <config file> <name> <outputDir>` where <config file> is the configuration file you make using `example.conf` (provided) as the template. The example file is in the `test` folder. Instructions for making configuration file are below. Run this either in `screen` or `nohup`.
 5. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
 
 
@@ -92,7 +92,7 @@ You can supply your own BED6/12 files or use genome-wide BED files made using an
 
 Run `extractTranscriptRegions -i <gene_file.txt> -o <output_prefix> [--ucsc|--gtf]`. Output will be a list of bed files for UTRs, CDS's, exons, introns, splice sites, TSS's, and TES's that can be used for metagene-maker.
 
-Configuration file (see example.conf for an example)
+Configuration file (see `test/example.conf` for an example)
 --------
 
 ### Bedgraph columns
