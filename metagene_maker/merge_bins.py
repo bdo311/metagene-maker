@@ -4,6 +4,7 @@
 
 import os, glob, csv, re, multiprocessing, logging
 import pandas as pd
+import numpy as np
 
 logger = logging.getLogger('')
 
@@ -20,10 +21,25 @@ def concatChrs(start, end, folders, folderToGraph, regions):
 			os.system("sort -rn -t $'\t' -k7,7 allchr.txt > allchr_sorted.txt")
 			os.system("rm -f allchr.txt")
 
-def getColumnMean(dir, isMinus):
-	a=pd.read_table(dir + "allchr_sorted.txt", header=None)
-	b=a[range(7,len(a.columns))]
-	x=b.mean(axis=0)
+def randomSampleMean(df):
+	rows = np.random.choice(df.shape[0], df.shape[0]/10, replace=True)
+	return df.iloc[rows,:].mean(axis=0)
+	
+def getColumnMean(dir, isMinus, toSample, numProcs):
+	a = pd.read_table(dir + "allchr_sorted.txt", header=None)
+	b = a[range(7,len(a.columns))]
+	x = b.mean(axis=0)
+	
+	nSamples = 200
+	if toSample:
+		P = multiprocessing.Pool(processes=numProcs)
+		allmeans = pd.DataFrame(P.map(randomSampleMean, [b]*nSamples))
+		
+		# take median of means
+		median_of_means = allmeans.apply(np.median, axis=0)
+		if isMinus: return (list(-x), list(-median_of_means))
+		return (list(x), list(median_of_means))
+		
 	if isMinus: return list(-x)
 	return list(x)
 

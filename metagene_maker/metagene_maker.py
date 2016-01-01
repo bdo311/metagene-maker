@@ -16,11 +16,14 @@ parser.add_argument('prefix', metavar='prefix', help="Prefix of output files")
 parser.add_argument('outputDir', metavar='output_directory', help="Directory where output folders will be written")
 parser.add_argument('-l', metavar='binLength', type=int, help="Bases per window when processing bedgraph. Default is 2,000,000.", default=2000000)
 parser.add_argument('-p', metavar='processors', type=int, help="Number of cores to use. Default is 4.", default=4)
+parser.add_argument('--sample', action='store_true', help="Run subsampling to make metagenes more robust.")
+
 args = parser.parse_args()
 config_file = args.config_file
 numProcs = args.p
 prefix = args.prefix
 binLength = args.l
+toSample = args.sample
 parentDir = args.outputDir
 if parentDir[0] != '/': parentDir = os.getcwd() + '/' + parentDir
 
@@ -284,7 +287,12 @@ def main():
 			binFolder = folderToGraph[folder][0]
 			isMinus = (folderToGraph[folder][2] == '-')
 			dir = binFolder + '/' + region + '/'
-			regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus)
+			
+			if toSample:
+				fs = folder + " (sampled)"
+				(regionToFolderAvgs[region][folder], regionToFolderAvgs[region][fs]) = getColumnMean(dir, isMinus, toSample, numProcs)
+			else:
+				regionToFolderAvgs[region][folder] = getColumnMean(dir, isMinus, toSample, numProcs)
 		logger.info("%s_%s", prefix, region)
 		writeFile(prefix + '_' + region, regionToFolderAvgs[region], parentDir + '/averages/')
 
