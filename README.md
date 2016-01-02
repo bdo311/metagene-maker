@@ -35,9 +35,9 @@ Usage
 5. Output: tab delimited files for each region in a new `averages` folder in the user-provided output directory, as well as raw files named `allchr_sorted.txt` in each subfolder that contains binned profiles for each region and can be used for custom analysis.
 
 
-usage: `metagene_maker [-h] [-l binLength] [-p processors] config_file prefix output_directory`
+usage: `metagene_maker [-h] [-l binLength] [-p processors] [--sample] config_file prefix output_directory`
 
-example: `metagene_maker -p 10 -l 500000 config/test.txt M3_ChIP chip/`
+example: `metagene_maker -p 10 --sample config/test.txt M3_ChIP chip/`
 
 positional arguments: | explanation
 --------------------|----------------------------
@@ -50,8 +50,8 @@ optional arguments: | explanation
   -h, --help      |  show this help message and exit
   -l binLength    |  Bases per window when processing bedgraph. Default is 2,000,000.
   -p processors   |  Number of cores to use. Default is 4.
-
-
+  --sample        |  Run subsampling to make metagenes more robust.
+  
 Dependencies
 --------
 
